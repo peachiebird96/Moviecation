@@ -157,6 +157,60 @@ const closePick = $("closePick");
 
   const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
   const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id-"+Math.random().toString(16).slice(2));
+const t = titleInput.value.trim();
+if (!t) return;
+
+const [movieRes, tvRes] = await Promise.all([
+  tmdb("/search/movie", { query: t, include_adult: "false", language: "en-US" }),
+  tmdb("/search/tv",    { query: t, include_adult: "false", language: "en-US" })
+]);
+
+const candidates = [];
+(movieRes.results || []).slice(0, 8).forEach(m => {
+  candidates.push({
+    kind: "movie",
+    id: m.id,
+    title: m.title,
+    year: (m.release_date || "").slice(0,4),
+    overview: m.overview || ""
+  });
+});
+(tvRes.results || []).slice(0, 8).forEach(s => {
+  candidates.push({
+    kind: "tv",
+    id: s.id,
+    title: s.name,
+    year: (s.first_air_date || "").slice(0,4),
+    overview: s.overview || ""
+  });
+});
+
+if (candidates.length === 0) {
+  alert("No match found.");
+  return;
+}
+
+const qn = normTitle(t);
+const exact = candidates.filter(c => normTitle(c.title) === qn);
+
+let chosen;
+
+// ✅ Your rule:
+if (exact.length === 1) {
+  // Only one title by that name → auto add
+  chosen = exact[0];
+} else if (candidates.length === 1) {
+  chosen = candidates[0];
+} else {
+  // More than one plausible → ask
+  const ordered = exact.length ? [...exact, ...candidates.filter(c => !exact.includes(c))] : candidates;
+  const picked = await showPicker(ordered);
+  if (!picked) return; // cancelled
+  chosen = ordered.find(c => c.kind === picked.kind && c.id === picked.id);
+  if (!chosen) return;
+}
+
+// From here, continue with your existing details/providers logic using chosen.kind + chosen.id
 
   function setStatus(t){ statusPill.textContent = t; }
 
@@ -375,6 +429,7 @@ const closePick = $("closePick");
 </script>
 </body>
 </html>
+
 
 
 
