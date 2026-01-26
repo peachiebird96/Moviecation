@@ -235,19 +235,28 @@ const closePick = $("closePick");
       const stChip = it.status==="watched" ? "w" : it.status==="skipped" ? "s" : "t";
       const stText = it.status==="watched" ? "Watched" : it.status==="skipped" ? "Skipped" : "To watch";
       const svcs = (it.services||[]).map(s=>`<span class="chip svc">${esc(s)}</span>`).join("") || `<span class="chip">Unknown/Rent/Buy</span>`;
+// This builds the poster URL or uses a placeholder if it's an old movie
+      const posterUrl = it.poster 
+        ? `https://image.tmdb.org/t/p/w185${it.poster}` 
+        : `https://via.placeholder.com/185x278?text=${encodeURIComponent(it.title)}`;
+
       return `
-        <div class="item">
-          <div class="title">${esc(it.title)} ${it.year?`<span class="chip">${esc(it.year)}</span>`:""}</div>
-          <div class="chips">
-            <span class="chip ${stChip==="w"?"w":stChip==="s"?"s":"status-towatch"}">${stText}</span>
-            <span class="chip vibe">${esc(it.vibe||"Cozy / Comfort")}</span>
-          </div>
-          <div class="chips">${svcs}</div>
-          <div class="actions">
-            <button class="good" data-status="${it.id}:watched">Watched</button>
-            <button class="bad" data-status="${it.id}:skipped">Skipped</button>
-            <button data-status="${it.id}:to_watch">To watch</button>
-            <button data-del="${it.id}">Delete</button>
+        <div class="item" style="display:flex; gap:16px; align-items:flex-start;">
+          <img src="${posterUrl}" style="width:100px; border-radius:8px; aspect-ratio:2/3; object-fit:cover;" alt="poster">
+          
+          <div style="flex:1;">
+            <div class="title" style="font-size:1.2rem; margin-bottom:4px;">${esc(it.title)} ${it.year?`<span class="chip">${esc(it.year)}</span>`:""}</div>
+            <div class="chips">
+              <span class="chip ${stChip==="w"?"w":stChip==="s"?"s":"status-towatch"}">${stText}</span>
+              <span class="chip vibe">${esc(it.vibe||"Cozy / Comfort")}</span>
+            </div>
+            <div class="chips">${svcs}</div>
+            <div class="actions">
+              <button class="good" data-status="${it.id}:watched">Watched</button>
+              <button class="bad" data-status="${it.id}:skipped">Skipped</button>
+              <button data-status="${it.id}:to_watch">To watch</button>
+              <button data-del="${it.id}">Delete</button>
+            </div>
           </div>
         </div>`;
     }).join("");
@@ -350,6 +359,7 @@ const closePick = $("closePick");
             id: uid(),
             tmdbId,
             title: details.title,
+          poster: details.poster_path,
             year: (details.release_date || "").slice(0, 4),
             status: "to_watch",
             vibe,
@@ -409,6 +419,7 @@ const closePick = $("closePick");
 </script>
 </body>
 </html>
+
 
 
 
