@@ -109,7 +109,7 @@
   <div class="modal">
     <div class="row" style="justify-content:space-between;margin-bottom:10px">
       <b>Which one?</b>
-      <button id="closePick">Close</button>
+<button id="closePick" class="bad">Cancel</button>
     </div>
 
     <div id="pickList" class="grid" style="grid-template-columns:1fr; gap:8px;"></div>
@@ -281,53 +281,85 @@ const closePick = $("closePick");
     return res.json();
   }
 
-  async function autoAdd(){
-    const t = titleInput.value.trim();
-    if (!t) return;
-    addBtn.disabled = true;
-    addBtn.textContent = "Adding…";
-    try{
-      const movie = await tmdb("/search/movie", { query:t, include_adult:"false", language:"en-US" });
-      const top = (movie.results||[])[0];
-      if (!top){ alert("No match."); return; }
-
-      const details = await tmdb(`/movie/${top.id}`, { language:"en-US" });
-      const providers = await tmdb(`/movie/${top.id}/watch/providers`, {});
-      const region = providers?.results?.[TMDB_REGION];
-      const services = region?.flatrate?.map(p=>p.provider_name) || [];
-      const vibe = (() => {
-        const g = new Set((details.genres||[]).map(x=>x.name));
-        if (g.has("Comedy")) return "Comedy / Easy";
-        if (g.has("Horror") || g.has("Thriller") || g.has("Crime")) return "Dark / Gritty / Suspense";
-        if (g.has("Fantasy") || g.has("Science Fiction") || g.has("Animation")) return "Fantasy / Sci-Fi / Escape";
-        if (g.has("Drama") || g.has("Romance")) return "Emotional / Cry";
-        return "Cozy / Comfort";
-      })();
-
-      const year = (details.release_date||"").slice(0,4);
-      const key = `movie:${details.title.toLowerCase()}:${year||""}`;
-      if (state.items.some(x=>x.key===key)){ alert("Already in list."); return; }
-
-      state.items.push({
-        id: uid(),
-        key,
-        title: details.title,
-        year,
-        status: "to_watch",
-        vibe,
-        services: services.length ? services : ["Unknown/Rent/Buy"],
-        createdAt: Date.now()
-      });
-
-      titleInput.value = "";
-      await saveState();
-      render();
-    } finally {
-      addBtn.disabled = false;
-      addBtn.textContent = "Auto-Add";
+  async function autoAdd() {
+        const t = titleInput.value.trim();
+        if (!t) return;
+        addBtn.disabled = true;
+        addBtn.textContent = "Searching...";
+        try {
+            const res = await tmdb("/search/movie", { query: t, include_adult: "false", language: "en-US" });
+            if (!res.results || res.results.length === 0) {
+                alert("No match found.");
+                resetAddBtn();
+                return;
+            }
+            // If multiple matches, show the picker popup
+            if (res.results.length > 1) {
+                showPicker(res.results);
+            } else {
+                await finalizeAddition(res.results[0].id);
+            }
+        } catch (e) {
+            console.error(e);
+            resetAddBtn();
+        }
     }
-  }
 
+    function resetAddBtn() {
+        addBtn.disabled = false;
+        addBtn.textContent = "Auto-Add";
+        titleInput.value = "";
+    }
+
+    function showPicker(results) {
+        const pickList = document.getElementById("pickList");
+        pickList.innerHTML = ""; 
+        results.slice(0, 5).forEach(m => {
+            const div = document.createElement("div");
+            div.className = "card";
+            div.style = "cursor:pointer; padding:10px; border:1px solid var(--border); display:flex; gap:15px; align-items:center; margin-bottom:10px; background:var(--card); color:var(--text);";
+            const posterUrl = m.poster_path ? `https://image.tmdb.org/t/p/w92${m.poster_path}` : "https://via.placeholder.com/92x138?text=No+Poster";
+            div.innerHTML = `
+                <img src="${posterUrl}" style="width:50px; border-radius:4px;">
+                <div style="flex:1;">
+                    <strong style="display:block;">${m.title}</strong>
+                    <small style="color:var(--text-muted);">${m.release_date ? m.release_date.slice(0,4) : 'N/A'}</small>
+                </div>`;
+            div.onclick = async () => {
+                pickDlg.close();
+                await finalizeAddition(m.id);
+            };
+            pickList.appendChild(div);
+        });
+        pickDlg.showModal();
+    }
+
+    async function finalizeAddition(tmdbId) {
+        const details = await tmdb(`/movie/${tmdbId}`, { language: "en-US" });
+        const providers = await tmdb(`/movie/${tmdbId}/watch/providers`, {});
+        const region = providers.results?.[TMDB_REGION];
+        const services = region?.flatrate?.map(p => p.provider_name) || [];
+        const genreNames = (details.genres || []).map(g => g.name);
+        
+        let vibe = "Cozy / Comfort";
+        if (genreNames.includes("Comedy")) vibe = "Comedy / Easy";
+        else if (genreNames.includes("Horror") || genreNames.includes("Thriller")) vibe = "Dark / Gritty / Suspense";
+        else if (genreNames.includes("Fantasy") || genreNames.includes("Science Fiction")) vibe = "Fantasy / Sci-Fi / Adventure";
+
+        state.items.push({
+            id: uid(),
+            tmdbId,
+            title: details.title,
+            year: (details.release_date || "").slice(0, 4),
+            status: "to_watch",
+            vibe,
+            services: services.length > 0 ? (services.length > 3 ? services.slice(0, 3) : services) : ["Unknown/Rent/Buy"],
+            createdAt: Date.now()
+        });
+        resetAddBtn();
+        await saveState();
+        render();
+    }
   function openIO(mode){
     ioDlg.showModal();
     if (mode==="export"){
@@ -377,6 +409,7 @@ const closePick = $("closePick");
 </script>
 </body>
 </html>
+
 
 
 
