@@ -149,6 +149,8 @@
 const pickDlg = $("pickDlg");
 const pickList = $("pickList");
 const closePick = $("closePick");
+  closePick.addEventListener("click", () => pickDlg.close());
+
 
   let state = { version: "1.0.0", items: [] };
   let lastOptionsSignature = "";
@@ -373,5 +375,6 @@ const closePick = $("closePick");
 </script>
 </body>
 </html>
+
 
 
