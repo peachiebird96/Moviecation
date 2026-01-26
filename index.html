@@ -104,6 +104,17 @@
     </div>
   </div>
 </dialog>
+  
+<dialog id="pickDlg">
+  <div class="modal">
+    <div class="row" style="justify-content:space-between;margin-bottom:10px">
+      <b>Which one?</b>
+      <button id="closePick">Close</button>
+    </div>
+
+    <div id="pickList" class="grid" style="grid-template-columns:1fr; gap:8px;"></div>
+  </div>
+</dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -359,3 +370,4 @@
 </script>
 </body>
 </html>
+
