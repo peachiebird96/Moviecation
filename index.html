@@ -258,29 +258,29 @@ const closePick = $("closePick");
               <button data-status="${it.id}:to_watch">To watch</button>
               <button data-del="${it.id}">Delete</button>
             </div>
-          </div>
-        </div>`;
     }).join("");
 
-    listEl.querySelectorAll("[data-status]").forEach(b=>{
-      b.onclick = async ()=>{
-        const [id,to] = b.getAttribute("data-status").split(":");
-        const it = state.items.find(x=>x.id===id);
-        if (!it) return;
-        it.status = to;
-        await saveState();
-        render();
-      };
+    // Re-linking the buttons to work again
+    listEl.querySelectorAll("[data-status]").forEach(b => {
+        b.onclick = async () => {
+            const [id, to] = b.getAttribute("data-status").split(":");
+            const it = state.items.find(x => x.id === id);
+            if (!it) return;
+            it.status = to;
+            await saveState();
+            render();
+        };
     });
-    listEl.querySelectorAll("[data-del]").forEach(b=>{
-      b.onclick = async ()=>{
-        const id = b.getAttribute("data-del");
-        state.items = state.items.filter(x=>x.id!==id);
-        await saveState();
-        render();
-      };
+
+    listEl.querySelectorAll("[data-del]").forEach(b => {
+        b.onclick = async () => {
+            const id = b.getAttribute("data-del");
+            state.items = state.items.filter(x => x.id !== id);
+            await saveState();
+            render();
+        };
     });
-  }
+};
 
   async function tmdb(path, params={}){
     const url = new URL("https://api.themoviedb.org/3"+path);
@@ -454,6 +454,7 @@ const closePick = $("closePick");
     await loadState();
     render();
 })();
+
 
 
 
