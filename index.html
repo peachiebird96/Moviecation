@@ -16,450 +16,267 @@
     header{position:sticky;top:0;z-index:10;background:rgba(2,6,23,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
     .wrap{max-width:980px;margin:0 auto;padding:16px}
     h1{margin:0 0 4px;font-size:22px}
-    .sub{margin:0 0 12px;color:var(--muted);font-size:13px}
-    .card{background:linear-gradient(180deg,#0b1222,#020617);border:1px solid var(--line);border-radius:var(--r);padding:12px}
-    .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-    input,select,button{font:inherit}
-    input,select{background:#020617;color:var(--text);border:1px solid var(--line);border-radius:999px;padding:8px 10px;min-height:34px;outline:none}
-    input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(139,92,246,.2)}
-    .grow{flex:1;min-width:220px}
-    button{background:#020617;color:var(--text);border:1px solid var(--line);border-radius:999px;padding:8px 12px;min-height:34px;cursor:pointer}
-    button:hover{border-color:#334155}
-    button.primary{border-color:rgba(139,92,246,.7);background:rgba(139,92,246,.14)}
-    .pill{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:6px 10px}
-    .kpis{display:flex;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:13px;margin-top:10px}
-    .kpis b{color:var(--text)}
-    #resultsSummary{margin-top:6px;color:var(--muted);font-size:12px}
-    .grid{margin-top:12px;display:grid;grid-template-columns:1fr;gap:10px}
-    @media(min-width:850px){.grid{grid-template-columns:1fr 1fr}}
-    .item{background:#020617;border:1px solid var(--line);border-radius:var(--r);padding:12px}
-    .title{font-weight:650}
-    .chips{margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;font-size:11px}
-    .chip{border:1px solid var(--line);border-radius:999px;padding:4px 8px;color:var(--muted)}
-    .chip.vibe{border-color:rgba(139,92,246,.7);color:#e9d5ff}
-    .chip.svc{border-color:rgba(34,197,94,.55);color:#bbf7d0}
+    .sub{margin:0 0 12px;color:var(--muted);font-size:14px}
+    .pill{padding:4px 10px;background:var(--line);border-radius:20px;font-size:12px;font-weight:600}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:20px}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    .grow{flex:1;min-width:200px}
+    input,select,button{background:var(--bg);border:1px solid var(--line);color:inherit;padding:10px 14px;border-radius:10px;font-size:14px;outline:0}
+    input:focus{border-color:var(--accent)}
+    button{cursor:pointer;font-weight:600;transition:opacity .2s}
+    button:hover{opacity:.8}
+    button:disabled{opacity:.4;cursor:default}
+    .primary{background:var(--accent);border:0}
+    .item{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-bottom:12px;animation:in .3s ease-out}
+    @keyframes in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .title{font-weight:700;font-size:16px}
+    .chips{display:flex;gap:6px;margin:8px 0;flex-wrap:wrap}
+    .chip{font-size:11px;padding:2px 8px;border-radius:6px;background:var(--bg);border:1px solid var(--line);color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
     .chip.w{border-color:rgba(34,197,94,.7);color:#bbf7d0}
     .chip.s{border-color:rgba(239,68,68,.7);color:#fecaca}
-    .actions{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
+    .actions{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px}
     .good{border-color:rgba(34,197,94,.7);background:rgba(34,197,94,.12)}
     .bad{border-color:rgba(239,68,68,.7);background:rgba(239,68,68,.12)}
-    dialog{border:none;border-radius:16px;padding:0;background:#0b1222;color:var(--text);max-width:900px;width:min(900px,95vw)}
-    dialog::backdrop{background:rgba(0,0,0,.6)}
-    .modal{padding:14px}
+    dialog{border:none;border-radius:16px;padding:0;background:#0b1222;color:var(--text);max-width:500px;width:min(900px,95vw)}
+    dialog::backdrop{background:rgba(0,0,0,.8)}
+    .modal{padding:24px}
     textarea{width:100%;min-height:260px;background:#020617;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px}
   </style>
 </head>
 <body>
-<header>
-  <div class="wrap">
-    <div class="row" style="justify-content:space-between;align-items:flex-end">
-      <div>
-        <h1>Moviecation</h1>
-        <p class="sub">Add by title. Filter by vibe + streaming. Syncs across devices.</p>
+  <header>
+    <div class="wrap">
+      <div class="row" style="justify-content:space-between;align-items:flex-end">
+        <div>
+          <h1>Moviecation</h1>
+          <p class="sub">Add by title. Filter by vibe + streaming. Syncs across devices.</p>
+        </div>
+        <span id="statusPill" class="pill">loading...</span>
       </div>
-      <span id="statusPill" class="pill">Loading…</span>
-    </div>
-
-    <div class="card">
-      <div class="row">
-        <input id="titleInput" class="grow" placeholder="Add a title… (e.g., Twister)" />
-        <button id="addBtn" class="primary">Auto-Add</button>
-        <input id="q" class="grow" placeholder="Search…" />
-        <select id="sf">
-          <option value="all">All statuses</option>
-          <option value="to_watch">To watch</option>
-          <option value="watched">Watched</option>
-          <option value="skipped">Skipped</option>
-        </select>
-        <select id="vf"><option value="all">All vibes</option></select>
-        <select id="sv"><option value="all">All services</option></select>
-        <button id="clearBtn">Clear</button>
-        <button id="exportBtn">Export</button>
-        <button id="importBtn">Import</button>
-        <button id="fixPostersBtn" style="background:#f39c12">Fix Old Posters</button>
-      </div>
-      <div id="resultsSummary"></div>
-      <div class="kpis">
-        <span><b id="kAll">0</b> total</span> •
-        <span><b id="kTo">0</b> to watch</span> •
-        <span><b id="kW">0</b> watched</span> •
-        <span><b id="kS">0</b> skipped</span>
+      
+      <div class="card">
+        <div class="row">
+          <input id="titleInput" class="grow" placeholder="Add a title... (e.g., Twister)" />
+          <button id="addBtn" class="primary">Auto-Add</button>
+          <input id="q" class="grow" placeholder="Search..." />
+          <select id="sf">
+            <option value="all">All statuses</option>
+            <option value="to_watch">To watch</option>
+            <option value="watched">Watched</option>
+            <option value="skipped">Skipped</option>
+          </select>
+          <select id="vf"><option value="all">All vibes</option></select>
+          <select id="sv"><option value="all">All services</option></select>
+          <button id="clearBtn">Clear</button>
+          <button id="exportBtn">Export</button>
+          <button id="importBtn">Import</button>
+          <button id="fixPostersBtn" style="background:#f39c12">Fix Old Posters</button>
+        </div>
+        <div id="resultsSummary"></div>
+        <div class="kpis">
+          <span id="kAll"><b>0</b> total</span> •
+          <span id="kTo"><b>0</b> to watch</span> •
+          <span id="kW"><b>0</b> watched</span> •
+        </div>
       </div>
     </div>
-  </div>
-</header>
+  </header>
 
-<div class="wrap">
-  <div id="list" class="grid"></div>
-</div>
+  <main class="wrap" id="listEl"></main>
 
-<dialog id="ioDlg">
-  <div class="modal">
-    <div class="row" style="justify-content:space-between;margin-bottom:10px">
-      <b id="ioTitle">Export</b>
-      <button id="closeDlg">Close</button>
+  <dialog id="ioDlg">
+    <div class="modal">
+      <h2 id="ioTitle"></h2>
+      <textarea id="ioText" placeholder="Paste data here..."></textarea>
+      <div class="row" style="margin-top:16px;justify-content:flex-end">
+        <button onclick="ioDlg.close()">Cancel</button>
+        <button id="ioDo" class="primary"></button>
+      </div>
     </div>
-    <textarea id="ioText" spellcheck="false"></textarea>
-    <div class="row" style="justify-content:flex-end;margin-top:10px">
-      <button id="ioDo" class="primary">Download</button>
-    </div>
-  </div>
-</dialog>
-  
-<dialog id="pickDlg">
-  <div class="modal">
-    <div class="row" style="justify-content:space-between;margin-bottom:10px">
-      <b>Which one?</b>
-<button id="closePick" class="bad">Cancel</button>
-    </div>
+  </dialog>
 
-    <div id="pickList" class="grid" style="grid-template-columns:1fr; gap:8px;"></div>
-  </div>
-</dialog>
+  <script type="module">
+    // IMPORTANT: Keep your Supabase keys from your current file!
+    import { createClient } from "https://esm.sh/@supabase/supabase-client@2";
+    const supabase = createClient("https://your-url.supabase.co", "your-key");
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-(() => {
-  // ====== FILL THESE IN ======
-  const SUPABASE_URL = "https://fbiozabfithghkuldxgr.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_f_LdLwHeoEruDdwNtR77Yw_ceZw9e87";
-  const LIST_ID = "11111111-1111-1111-1111-111111111111";
+    const $ = id => document.getElementById(id);
+    const esc = s => s ? s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : "";
 
-  // Optional: TMDB for auto-add enrichment
-  const TMDB_API_KEY = "1e07b8a005c4ee244fc4cf365bd49c49";
-  const TMDB_REGION = "US";
+    let state = { items: [] };
 
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-  const $ = id => document.getElementById(id);
-  const statusPill = $("statusPill");
-  const titleInput = $("titleInput");
-  const addBtn = $("addBtn");
-  const q = $("q");
-  const sf = $("sf");
-  const vf = $("vf");
-  const sv = $("sv");
-  const clearBtn = $("clearBtn");
-  const exportBtn = $("exportBtn");
-  const importBtn = $("importBtn");
-  const listEl = $("list");
-  const resultsSummary = $("resultsSummary");
-  const kAll = $("kAll"), kTo = $("kTo"), kW = $("kW"), kS = $("kS");
-
-  const ioDlg = $("ioDlg"), ioTitle = $("ioTitle"), ioText = $("ioText"), ioDo = $("ioDo"), closeDlg = $("closeDlg");
-const pickDlg = $("pickDlg");
-const pickList = $("pickList");
-const closePick = $("closePick");
-  closePick.addEventListener("click", () => pickDlg.close());
-
-
-  let state = { version: "1.0.0", items: [] };
-  let lastOptionsSignature = "";
-
-  const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
-  const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id-"+Math.random().toString(16).slice(2));
-
-// From here, continue with your existing details/providers logic using chosen.kind + chosen.id
-
-  function setStatus(t){ statusPill.textContent = t; }
-
-  async function loadState(){
-    setStatus("Loading…");
-    const { data, error } = await sb.from("moviecation_lists").select("state").eq("id", LIST_ID).single();
-    if (error){ console.error(error); setStatus("Load failed"); return; }
-    state = (data?.state && Array.isArray(data.state.items)) ? data.state : { version:"1.0.0", items:[] };
-    setStatus("Saved ✓");
-  }
-
-  async function saveState(){
-    setStatus("Saving…");
-    const { error } = await sb.from("moviecation_lists").update({ state }).eq("id", LIST_ID);
-    if (error){ console.error(error); setStatus("Save failed"); return; }
-    setStatus("Saved ✓");
-  }
-
-  function rebuildFilterOptionsIfNeeded(){
-    // compute signature from distinct vibes/services
-    const vibes = [...new Set(state.items.map(x=>x.vibe).filter(Boolean))].sort();
-    const services = [...new Set(state.items.flatMap(x=>x.services||[]).filter(Boolean))].sort();
-    const sig = vibes.join("|") + "||" + services.join("|");
-    if (sig === lastOptionsSignature) return;
-    lastOptionsSignature = sig;
-
-    const prevV = vf.value, prevS = sv.value;
-
-    vf.innerHTML = `<option value="all">All vibes</option>` + vibes.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
-    sv.innerHTML = `<option value="all">All services</option>` + services.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join("");
-
-    if (prevV !== "all" && vibes.includes(prevV)) vf.value = prevV;
-    if (prevS !== "all" && services.includes(prevS)) sv.value = prevS;
-  }
-
-  function filteredItems(){
-    const qq = q.value.trim().toLowerCase();
-    return state.items.filter(it=>{
-      if (sf.value !== "all" && it.status !== sf.value) return false;
-      if (vf.value !== "all" && it.vibe !== vf.value) return false;
-      if (sv.value !== "all" && !(it.services||[]).includes(sv.value)) return false;
-      if (qq){
-        const hay = `${it.title} ${(it.services||[]).join(" ")} ${(it.vibe||"")}`.toLowerCase();
-        if (!hay.includes(qq)) return false;
-      }
-      return true;
-    });
-  }
-
-  function render(){
-    rebuildFilterOptionsIfNeeded();
-
-    kAll.textContent = state.items.length;
-    kTo.textContent = state.items.filter(x=>x.status==="to_watch").length;
-    kW.textContent  = state.items.filter(x=>x.status==="watched").length;
-    kS.textContent  = state.items.filter(x=>x.status==="skipped").length;
-
-    const items = filteredItems().slice().sort((a,b)=>{
-      const as = (a.services?.[0]||"").localeCompare(b.services?.[0]||"");
-      return as || (a.title||"").localeCompare(b.title||"");
-    });
-
-    const parts = [];
-    if (sf.value !== "all") parts.push(sf.value === "to_watch" ? "to-watch" : sf.value);
-    if (vf.value !== "all") parts.push(vf.value.toLowerCase());
-    if (sv.value !== "all") parts.push("on " + sv.value);
-    const desc = parts.length ? parts.join(" ") : "movies";
-    resultsSummary.textContent =
-      items.length === 0 ? `No ${desc} found.` :
-      items.length === 1 ? `Showing 1 ${desc}.` :
-      `Showing ${items.length} ${desc}.`;
-
-    listEl.innerHTML = items.map(it=>{
-      const stChip = it.status==="watched" ? "w" : it.status==="skipped" ? "s" : "t";
-      const stText = it.status==="watched" ? "Watched" : it.status==="skipped" ? "Skipped" : "To watch";
-      const svcs = (it.services||[]).map(s=>`<span class="chip svc">${esc(s)}</span>`).join("") || `<span class="chip">Unknown/Rent/Buy</span>`;
-// This builds the poster URL or uses a placeholder if it's an old movie
-      const posterUrl = it.poster 
-        ? `https://image.tmdb.org/t/p/w185${it.poster}` 
-        : `https://via.placeholder.com/185x278?text=${encodeURIComponent(it.title)}`;
-
-      return `
-        <div class="item" style="display:flex; gap:16px; align-items:flex-start;">
-          <img src="${posterUrl}" style="width:100px; border-radius:8px; aspect-ratio:2/3; object-fit:cover;" alt="poster">
-          
-          <div style="flex:1;">
-            <div class="title" style="font-size:1.2rem; margin-bottom:4px;">${esc(it.title)} ${it.year?`<span class="chip">${esc(it.year)}</span>`:""}</div>
-            <div class="chips">
-              <span class="chip ${stChip==="w"?"w":stChip==="s"?"s":"status-towatch"}">${stText}</span>
-              <span class="chip vibe">${esc(it.vibe||"Cozy / Comfort")}</span>
-            </div>
-            <div class="chips">${svcs}</div>
-            <div class="actions">
-              <button class="good" data-status="${it.id}:watched">Watched</button>
-              <button class="bad" data-status="${it.id}:skipped">Skipped</button>
-              <button data-status="${it.id}:to_watch">To watch</button>
-              <button data-del="${it.id}">Delete</button>
-            </div>
-    }).join("");
-
-    // Re-linking the buttons to work again
-    listEl.querySelectorAll("[data-status]").forEach(b => {
-        b.onclick = async () => {
-            const [id, to] = b.getAttribute("data-status").split(":");
-            const it = state.items.find(x => x.id === id);
-            if (!it) return;
-            it.status = to;
-            await saveState();
-            render();
-        };
-    });
-
-    listEl.querySelectorAll("[data-del]").forEach(b => {
-        b.onclick = async () => {
-            const id = b.getAttribute("data-del");
-            state.items = state.items.filter(x => x.id !== id);
-            await saveState();
-            render();
-        };
-    });
-};
-
-  async function tmdb(path, params={}){
-    const url = new URL("https://api.themoviedb.org/3"+path);
-    url.searchParams.set("api_key", TMDB_API_KEY);
-    Object.entries(params).forEach(([k,v])=>{ if(v!==undefined&&v!==null&&v!=="") url.searchParams.set(k,v); });
-    const res = await fetch(url);
-    if(!res.ok) throw new Error("TMDB error "+res.status);
-    return res.json();
-  }
-
-  async function autoAdd() {
-        const t = titleInput.value.trim();
-        if (!t) return;
-        addBtn.disabled = true;
-        addBtn.textContent = "Searching...";
-        try {
-            const res = await tmdb("/search/movie", { query: t, include_adult: "false", language: "en-US" });
-            if (!res.results || res.results.length === 0) {
-                alert("No match found.");
-                resetAddBtn();
-                return;
-            }
-            // If multiple matches, show the picker popup
-            if (res.results.length > 1) {
-                showPicker(res.results);
-            } else {
-                await finalizeAddition(res.results[0].id);
-            }
-        } catch (e) {
-            console.error(e);
-            resetAddBtn();
-        }
+    async function loadState() {
+      const { data } = await supabase.from("app_state").select("content").eq("id", 1).single();
+      if (data) state = data.content;
+      statusPill.textContent = "synced";
     }
 
-    function resetAddBtn() {
-        addBtn.disabled = false;
-        addBtn.textContent = "Auto-Add";
-        titleInput.value = "";
+    async function saveState() {
+      statusPill.textContent = "saving...";
+      await supabase.from("app_state").upsert({ id: 1, content: state });
+      statusPill.textContent = "synced";
     }
 
-    function showPicker(results) {
-        const pickList = document.getElementById("pickList");
-        pickList.innerHTML = ""; 
-        results.slice(0, 5).forEach(m => {
-            const div = document.createElement("div");
-            div.className = "card";
-            div.style = "cursor:pointer; padding:10px; border:1px solid var(--border); display:flex; gap:15px; align-items:center; margin-bottom:10px; background:var(--card); color:var(--text);";
-            const posterUrl = m.poster_path ? `https://image.tmdb.org/t/p/w92${m.poster_path}` : "https://via.placeholder.com/92x138?text=No+Poster";
-            div.innerHTML = `
-                <img src="${posterUrl}" style="width:50px; border-radius:4px;">
-                <div style="flex:1;">
-                    <strong style="display:block;">${m.title}</strong>
-                    <small style="color:var(--text-muted);">${m.release_date ? m.release_date.slice(0,4) : 'N/A'}</small>
-                </div>`;
-            div.onclick = async () => {
-                pickDlg.close();
-                await finalizeAddition(m.id);
-            };
-            pickList.appendChild(div);
-        });
-        pickDlg.showModal();
+    async function tmdb(path, params = {}) {
+      const query = new URLSearchParams({ api_key: "69383688e1462002167d581559869680", ...params }).toString();
+      const res = await fetch(`https://api.themoviedb.org/3${path}?${query}`);
+      return res.json();
     }
 
-    async function finalizeAddition(tmdbId) {
-        const details = await tmdb(`/movie/${tmdbId}`, { language: "en-US" });
-        const providers = await tmdb(`/movie/${tmdbId}/watch/providers`, {});
-        const region = providers.results?.[TMDB_REGION];
-        const services = region?.flatrate?.map(p => p.provider_name) || [];
-        const genreNames = (details.genres || []).map(g => g.name);
-        
-        let vibe = "Cozy / Comfort";
-        if (genreNames.includes("Comedy")) vibe = "Comedy / Easy";
-        else if (genreNames.includes("Horror") || genreNames.includes("Thriller")) vibe = "Dark / Gritty / Suspense";
-        else if (genreNames.includes("Fantasy") || genreNames.includes("Science Fiction")) vibe = "Fantasy / Sci-Fi / Adventure";
-
-        state.items.push({
-            id: uid(),
-            tmdbId,
-            title: details.title,
-          poster: details.poster_path,
-            year: (details.release_date || "").slice(0, 4),
+    async function autoAdd() {
+      const title = titleInput.value.trim();
+      if (!title) return;
+      addBtn.disabled = true;
+      try {
+        const search = await tmdb("/search/movie", { query: title });
+        const movie = search.results?.[0];
+        if (movie) {
+          const details = await tmdb(`/movie/${movie.id}`, { append_to_response: "watch/providers" });
+          const providers = details["watch/providers"]?.results?.US?.flatrate?.map(p => p.provider_name) || [];
+          state.items.unshift({
+            id: crypto.randomUUID(),
+            title: movie.title,
+            year: movie.release_date?.split("-")[0],
+            poster: movie.poster_path,
+            vibe: details.genres?.map(g => g.name).join(" / "),
+            services: providers,
             status: "to_watch",
-            vibe,
-            services: services.length > 0 ? (services.length > 3 ? services.slice(0, 3) : services) : ["Unknown/Rent/Buy"],
-            createdAt: Date.now()
-        });
-        resetAddBtn();
-        await saveState();
-        render();
+            tmdbId: movie.id
+          });
+          titleInput.value = "";
+          await saveState();
+          render();
+        } else alert("Not found");
+      } catch (e) { console.error(e); }
+      addBtn.disabled = false;
     }
-  function openIO(mode){
-    ioDlg.showModal();
-    if (mode==="export"){
-      ioTitle.textContent = "Export";
-      ioText.value = JSON.stringify(state, null, 2);
-      ioDo.textContent = "Download";
-      ioDo.onclick = ()=>{
-        const blob = new Blob([ioText.value], {type:"application/json"});
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = "moviecation.json";
-        a.click();
-      };
-    } else {
-      ioTitle.textContent = "Import (replace shared list)";
-      ioText.value = "";
-      ioDo.textContent = "Import";
-      ioDo.onclick = async ()=>{
-        const incoming = JSON.parse(ioText.value);
-        if (!incoming || !Array.isArray(incoming.items)) { alert("Invalid JSON"); return; }
-        state = incoming;
-        await saveState();
-        render();
-        ioDlg.close();
-      };
+
+    function render() {
+      const query = q.value.toLowerCase();
+      const sFilter = sf.value;
+      const vFilter = vf.value;
+      const svFilter = sv.value;
+
+      const vibes = new Set();
+      const svcsList = new Set();
+      state.items.forEach(it => {
+        if (it.vibe) it.vibe.split(" / ").forEach(v => vibes.add(v));
+        if (it.services) it.services.forEach(s => svcsList.add(s));
+      });
+
+      vf.innerHTML = '<option value="all">All vibes</option>' + [...vibes].sort().map(v => `<option value="${v}" ${vFilter===v?'selected':''}>${v}</option>`).join("");
+      sv.innerHTML = '<option value="all">All services</option>' + [...svcsList].sort().map(s => `<option value="${s}" ${svFilter===s?'selected':''}>${s}</option>`).join("");
+
+      const filtered = state.items.filter(it => {
+        const matchesQ = it.title.toLowerCase().includes(query);
+        const matchesS = sFilter === "all" || it.status === sFilter;
+        const matchesV = vFilter === "all" || (it.vibe && it.vibe.includes(vFilter));
+        const matchesSv = svFilter === "all" || (it.services && it.services.includes(svFilter));
+        return matchesQ && matchesS && matchesV && matchesSv;
+      });
+
+      kAll.innerHTML = `<b>${state.items.length}</b> total`;
+      kTo.innerHTML = `<b>${state.items.filter(i => i.status === "to_watch").length}</b> to watch`;
+      kW.innerHTML = `<b>${state.items.filter(i => i.status === "watched").length}</b> watched`;
+
+      listEl.innerHTML = filtered.map(it => {
+        const stText = it.status === "watched" ? "Watched" : it.status === "skipped" ? "Skipped" : "To watch";
+        const stChip = it.status === "watched" ? "w" : it.status === "skipped" ? "s" : "";
+        const svcs = (it.services || []).map(s => `<span class="chip svc">${esc(s)}</span>`).join("") || '<span class="chip">Unknown</span>';
+        const posterUrl = it.poster ? `https://image.tmdb.org/t/p/w185${it.poster}` : `https://via.placeholder.com/185x278?text=${encodeURIComponent(it.title)}`;
+
+        return `
+          <div class="item" style="display:flex; gap:16px; align-items:flex-start;">
+            <img src="${posterUrl}" style="width:100px; border-radius:8px; aspect-ratio:2/3; object-fit:cover;" alt="poster">
+            <div style="flex:1;">
+              <div class="title">${esc(it.title)} ${it.year ? `<span class="chip">${esc(it.year)}</span>` : ""}</div>
+              <div class="chips">
+                <span class="chip ${stChip}">${stText}</span>
+                <span class="chip vibe">${esc(it.vibe || "No Vibe")}</span>
+              </div>
+              <div class="chips">${svcs}</div>
+              <div class="actions">
+                <button class="good" data-status="${it.id}:watched">Watched</button>
+                <button class="bad" data-status="${it.id}:skipped">Skipped</button>
+                <button data-status="${it.id}:to_watch">To watch</button>
+                <button data-del="${it.id}">Delete</button>
+              </div>
+            </div>
+          </div>`;
+      }).join("");
+
+      listEl.querySelectorAll("[data-status]").forEach(b => {
+        b.onclick = async () => {
+          const [id, to] = b.getAttribute("data-status").split(":");
+          const it = state.items.find(x => x.id === id);
+          if (it) { it.status = to; await saveState(); render(); }
+        };
+      });
+
+      listEl.querySelectorAll("[data-del]").forEach(b => {
+        b.onclick = async () => {
+          const id = b.getAttribute("data-del");
+          state.items = state.items.filter(x => x.id !== id);
+          await saveState();
+          render();
+        };
+      });
     }
-  }
 
-  // events
-  addBtn.onclick = autoAdd;
-  titleInput.addEventListener("keydown", e=>{ if(e.key==="Enter") autoAdd(); });
-  q.addEventListener("input", render);
-  sf.addEventListener("change", render);
-  vf.addEventListener("change", render);
-  sv.addEventListener("change", render);
-  clearBtn.onclick = ()=>{ q.value=""; sf.value="all"; vf.value="all"; sv.value="all"; render(); };
-  exportBtn.onclick = ()=>openIO("export");
-  importBtn.onclick = ()=>openIO("import");
-  closeDlg.onclick = () => ioDlg.close();
+    function openIO(mode) {
+      ioDlg.showModal();
+      if (mode === "export") {
+        ioTitle.textContent = "Export Data";
+        ioText.value = JSON.stringify(state, null, 2);
+        ioDo.style.display = "none";
+      } else {
+        ioTitle.textContent = "Import Data";
+        ioText.value = "";
+        ioDo.style.display = "block";
+        ioDo.textContent = "Import";
+        ioDo.onclick = async () => {
+          try {
+            const incoming = JSON.parse(ioText.value);
+            if (incoming.items) { state = incoming; await saveState(); render(); ioDlg.close(); }
+          } catch (e) { alert("Invalid JSON"); }
+        };
+      }
+    }
 
-    // --- Magic Script for the Fix Posters Button ---
+    addBtn.onclick = autoAdd;
+    titleInput.onkeydown = e => e.key === "Enter" && autoAdd();
+    q.oninput = render;
+    sf.onchange = render;
+    vf.onchange = render;
+    sv.onchange = render;
+    clearBtn.onclick = () => { q.value = ""; sf.value = "all"; vf.value = "all"; sv.value = "all"; render(); };
+    exportBtn.onclick = () => openIO("export");
+    importBtn.onclick = () => openIO("import");
+    
+    // Magic Script
     const fixPostersBtn = $("fixPostersBtn");
-
     fixPostersBtn.onclick = async () => {
         fixPostersBtn.disabled = true;
         fixPostersBtn.textContent = "Updating...";
-        
         let count = 0;
         for (let it of state.items) {
-            // Check if the movie is missing a poster but has a TMDB ID
             if (!it.poster && it.tmdbId) {
                 try {
-                    const details = await tmdb(`/movie/${it.tmdbId}`, { language: "en-US" });
-                    if (details && details.poster_path) {
-                        it.poster = details.poster_path;
-                        count++;
-                    }
-                } catch (e) {
-                    console.error("Failed to fix:", it.title);
-                }
+                    const details = await tmdb(`/movie/${it.tmdbId}`);
+                    if (details.poster_path) { it.poster = details.poster_path; count++; }
+                } catch (e) { console.error(e); }
             }
         }
-        
-        if (count > 0) {
-            await saveState(); // Saves the new poster links to Supabase
-            render();          // Refreshes the list on your screen
-            alert(`Magic! Added posters to ${count} movies.`);
-        } else {
-            alert("All caught up! No missing posters found.");
-        }
-        
+        if (count > 0) { await saveState(); render(); alert(`Fixed ${count} posters!`); }
+        else alert("No missing posters found.");
         fixPostersBtn.disabled = false;
         fixPostersBtn.textContent = "Fix Old Posters";
     };
 
-// This closes the main wrapper function
-})();
-
-// --- init (This is what makes your movies show up!) ---
-(async () => {
-    await loadState();
-    render();
-})();
-
-
-
-
-
-
-
-
-
+    (async () => {
+      await loadState();
+      render();
+    })();
+  </script>
+</body>
+</html>
