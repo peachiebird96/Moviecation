@@ -410,8 +410,9 @@ const closePick = $("closePick");
   clearBtn.onclick = ()=>{ q.value=""; sf.value="all"; vf.value="all"; sv.value="all"; render(); };
   exportBtn.onclick = ()=>openIO("export");
   importBtn.onclick = ()=>openIO("import");
-  closeDlg.onclick = ()=>ioDlg.close();
-  // --- Magic Script for the Fix Posters Button ---
+closeDlg.onclick = () => ioDlg.close();
+
+    // --- Magic Script for the Fix Posters Button ---
     const fixPostersBtn = $("fixPostersBtn");
 
     fixPostersBtn.onclick = async () => {
@@ -419,9 +420,7 @@ const closePick = $("closePick");
         fixPostersBtn.textContent = "Updating...";
         
         let count = 0;
-        // This loops through every movie in her list
         for (let it of state.items) {
-            // If it has no poster, we go find one!
             if (!it.poster && it.tmdbId) {
                 try {
                     const details = await tmdb(`/movie/${it.tmdbId}`, { language: "en-US" });
@@ -436,8 +435,8 @@ const closePick = $("closePick");
         }
         
         if (count > 0) {
-            await saveState(); // This saves the new posters to Supabase
-            render();          // This refreshes the screen
+            await saveState(); 
+            render();          
             alert(`Magic! Added posters to ${count} movies.`);
         } else {
             alert("All caught up! No missing posters found.");
@@ -447,15 +446,18 @@ const closePick = $("closePick");
         fixPostersBtn.textContent = "Fix Old Posters";
     };
 
-  // init
-  (async ()=>{
+// This correctly closes the main app function
+})();
+
+// --- init (This is what actually loads your movies!) ---
+(async () => {
     await loadState();
     render();
-  })();
 })();
 </script>
 </body>
 </html>
+
 
 
 
