@@ -76,6 +76,7 @@
         <button id="clearBtn">Clear</button>
         <button id="exportBtn">Export</button>
         <button id="importBtn">Import</button>
+        <button id="fixPostersBtn" style="background:#f39c12">Fix Old Posters</button>
       </div>
       <div id="resultsSummary"></div>
       <div class="kpis">
@@ -259,6 +260,7 @@ const closePick = $("closePick");
             </div>
           </div>
         </div>`;
+        </div>`;
     }).join("");
 
     listEl.querySelectorAll("[data-status]").forEach(b=>{
@@ -409,6 +411,41 @@ const closePick = $("closePick");
   exportBtn.onclick = ()=>openIO("export");
   importBtn.onclick = ()=>openIO("import");
   closeDlg.onclick = ()=>ioDlg.close();
+  // --- Magic Script for the Fix Posters Button ---
+    const fixPostersBtn = $("fixPostersBtn");
+
+    fixPostersBtn.onclick = async () => {
+        fixPostersBtn.disabled = true;
+        fixPostersBtn.textContent = "Updating...";
+        
+        let count = 0;
+        // This loops through every movie in her list
+        for (let it of state.items) {
+            // If it has no poster, we go find one!
+            if (!it.poster && it.tmdbId) {
+                try {
+                    const details = await tmdb(`/movie/${it.tmdbId}`, { language: "en-US" });
+                    if (details && details.poster_path) {
+                        it.poster = details.poster_path;
+                        count++;
+                    }
+                } catch (e) {
+                    console.error("Failed to fix:", it.title);
+                }
+            }
+        }
+        
+        if (count > 0) {
+            await saveState(); // This saves the new posters to Supabase
+            render();          // This refreshes the screen
+            alert(`Magic! Added posters to ${count} movies.`);
+        } else {
+            alert("All caught up! No missing posters found.");
+        }
+        
+        fixPostersBtn.disabled = false;
+        fixPostersBtn.textContent = "Fix Old Posters";
+    };
 
   // init
   (async ()=>{
@@ -419,6 +456,7 @@ const closePick = $("closePick");
 </script>
 </body>
 </html>
+
 
 
 
