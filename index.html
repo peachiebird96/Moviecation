@@ -410,7 +410,7 @@ const closePick = $("closePick");
   clearBtn.onclick = ()=>{ q.value=""; sf.value="all"; vf.value="all"; sv.value="all"; render(); };
   exportBtn.onclick = ()=>openIO("export");
   importBtn.onclick = ()=>openIO("import");
-closeDlg.onclick = () => ioDlg.close();
+  closeDlg.onclick = () => ioDlg.close();
 
     // --- Magic Script for the Fix Posters Button ---
     const fixPostersBtn = $("fixPostersBtn");
@@ -421,6 +421,7 @@ closeDlg.onclick = () => ioDlg.close();
         
         let count = 0;
         for (let it of state.items) {
+            // Check if the movie is missing a poster but has a TMDB ID
             if (!it.poster && it.tmdbId) {
                 try {
                     const details = await tmdb(`/movie/${it.tmdbId}`, { language: "en-US" });
@@ -435,8 +436,8 @@ closeDlg.onclick = () => ioDlg.close();
         }
         
         if (count > 0) {
-            await saveState(); 
-            render();          
+            await saveState(); // Saves the new poster links to Supabase
+            render();          // Refreshes the list on your screen
             alert(`Magic! Added posters to ${count} movies.`);
         } else {
             alert("All caught up! No missing posters found.");
@@ -446,19 +447,14 @@ closeDlg.onclick = () => ioDlg.close();
         fixPostersBtn.textContent = "Fix Old Posters";
     };
 
-// This correctly closes the main app function
+// This closes the main wrapper function
 })();
 
-// --- init (This is what actually loads your movies!) ---
+// --- init (This is what makes your movies show up!) ---
 (async () => {
     await loadState();
     render();
 })();
-</script>
-</body>
-</html>
-
-
 
 
 
