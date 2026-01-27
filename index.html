@@ -49,14 +49,13 @@
       <div class="row" style="justify-content:space-between;align-items:flex-end">
         <div>
           <h1>Moviecation</h1>
-          <p class="sub">Add by title. Filter by vibe + streaming. Syncs across devices.</p>
+          <p class="sub">Syncs across devices. Add by title.</p>
         </div>
         <span id="statusPill" class="pill">loading...</span>
       </div>
-      
       <div class="card">
         <div class="row">
-          <input id="titleInput" class="grow" placeholder="Add a title... (e.g., Twister)" />
+          <input id="titleInput" class="grow" placeholder="Add a title..." />
           <button id="addBtn" class="primary">Auto-Add</button>
           <input id="q" class="grow" placeholder="Search..." />
           <select id="sf">
@@ -68,15 +67,10 @@
           <select id="vf"><option value="all">All vibes</option></select>
           <select id="sv"><option value="all">All services</option></select>
           <button id="clearBtn">Clear</button>
-          <button id="exportBtn">Export</button>
-          <button id="importBtn">Import</button>
           <button id="fixPostersBtn" style="background:#f39c12">Fix Old Posters</button>
         </div>
-        <div id="resultsSummary"></div>
-        <div class="kpis">
-          <span id="kAll"><b>0</b> total</span> •
-          <span id="kTo"><b>0</b> to watch</span> •
-          <span id="kW"><b>0</b> watched</span> •
+        <div class="kpis" style="margin-top:10px; font-size:12px; color:var(--muted);">
+          <span id="kAll"><b>0</b> total</span> • <span id="kTo"><b>0</b> to watch</span> • <span id="kW"><b>0</b> watched</span>
         </div>
       </div>
     </div>
@@ -84,38 +78,28 @@
 
   <main class="wrap" id="listEl"></main>
 
-  <dialog id="ioDlg">
-    <div class="modal">
-      <h2 id="ioTitle"></h2>
-      <textarea id="ioText" placeholder="Paste data here..."></textarea>
-      <div class="row" style="margin-top:16px;justify-content:flex-end">
-        <button onclick="ioDlg.close()">Cancel</button>
-        <button id="ioDo" class="primary"></button>
-      </div>
-    </div>
-  </dialog>
-
   <script type="module">
-    // IMPORTANT: Keep your Supabase keys from your current file!
     import { createClient } from "https://esm.sh/@supabase/supabase-client@2";
-    const supabase = createClient("https://fbiozabfithghkuldxgr.supabase.co", "sb_publishable_f_LdLwHeoEruDdwNtR77Yw_ceZw9e87");
+    
+    // PASTE YOUR KEYS HERE
+    const supabase = createClient("YOUR_URL_HERE", "YOUR_KEY_HERE");
 
     const $ = id => document.getElementById(id);
     const esc = s => s ? s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : "";
 
     let state = { items: [] };
 
-    async function loadState() {
+    window.loadState = async function() {
       const { data } = await supabase.from("app_state").select("content").eq("id", 1).single();
       if (data) state = data.content;
       statusPill.textContent = "synced";
-    }
+    };
 
-    async function saveState() {
+    window.saveState = async function() {
       statusPill.textContent = "saving...";
       await supabase.from("app_state").upsert({ id: 1, content: state });
       statusPill.textContent = "synced";
-    }
+    };
 
     async function tmdb(path, params = {}) {
       const query = new URLSearchParams({ api_key: "69383688e1462002167d581559869680", ...params }).toString();
@@ -123,35 +107,7 @@
       return res.json();
     }
 
-    async function autoAdd() {
-      const title = titleInput.value.trim();
-      if (!title) return;
-      addBtn.disabled = true;
-      try {
-        const search = await tmdb("/search/movie", { query: title });
-        const movie = search.results?.[0];
-        if (movie) {
-          const details = await tmdb(`/movie/${movie.id}`, { append_to_response: "watch/providers" });
-          const providers = details["watch/providers"]?.results?.US?.flatrate?.map(p => p.provider_name) || [];
-          state.items.unshift({
-            id: crypto.randomUUID(),
-            title: movie.title,
-            year: movie.release_date?.split("-")[0],
-            poster: movie.poster_path,
-            vibe: details.genres?.map(g => g.name).join(" / "),
-            services: providers,
-            status: "to_watch",
-            tmdbId: movie.id
-          });
-          titleInput.value = "";
-          await saveState();
-          render();
-        } else alert("Not found");
-      } catch (e) { console.error(e); }
-      addBtn.disabled = false;
-    }
-
-    function render() {
+    window.render = function() {
       const query = q.value.toLowerCase();
       const sFilter = sf.value;
       const vFilter = vf.value;
@@ -182,17 +138,17 @@
       listEl.innerHTML = filtered.map(it => {
         const stText = it.status === "watched" ? "Watched" : it.status === "skipped" ? "Skipped" : "To watch";
         const stChip = it.status === "watched" ? "w" : it.status === "skipped" ? "s" : "";
-        const svcs = (it.services || []).map(s => `<span class="chip svc">${esc(s)}</span>`).join("") || '<span class="chip">Unknown</span>';
-        const posterUrl = it.poster ? `https://image.tmdb.org/t/p/w185${it.poster}` : `https://via.placeholder.com/185x278?text=${encodeURIComponent(it.title)}`;
+        const svcs = (it.services || []).map(s => `<span class="chip">${esc(s)}</span>`).join("") || '<span class="chip">Unknown</span>';
+        const posterUrl = it.poster ? `https://image.tmdb.org/t/p/w185${it.poster}` : `https://via.placeholder.com/185x278?text=No+Poster`;
 
         return `
-          <div class="item" style="display:flex; gap:16px; align-items:flex-start;">
-            <img src="${posterUrl}" style="width:100px; border-radius:8px; aspect-ratio:2/3; object-fit:cover;" alt="poster">
+          <div class="item" style="display:flex; gap:16px;">
+            <img src="${posterUrl}" style="width:100px; border-radius:8px; aspect-ratio:2/3; object-fit:cover;">
             <div style="flex:1;">
-              <div class="title">${esc(it.title)} ${it.year ? `<span class="chip">${esc(it.year)}</span>` : ""}</div>
+              <div class="title">${esc(it.title)} ${it.year ? `<span class="chip">${it.year}</span>` : ""}</div>
               <div class="chips">
                 <span class="chip ${stChip}">${stText}</span>
-                <span class="chip vibe">${esc(it.vibe || "No Vibe")}</span>
+                <span class="chip">${esc(it.vibe || "No vibe")}</span>
               </div>
               <div class="chips">${svcs}</div>
               <div class="actions">
@@ -221,57 +177,56 @@
           render();
         };
       });
-    }
+    };
 
-    function openIO(mode) {
-      ioDlg.showModal();
-      if (mode === "export") {
-        ioTitle.textContent = "Export Data";
-        ioText.value = JSON.stringify(state, null, 2);
-        ioDo.style.display = "none";
-      } else {
-        ioTitle.textContent = "Import Data";
-        ioText.value = "";
-        ioDo.style.display = "block";
-        ioDo.textContent = "Import";
-        ioDo.onclick = async () => {
+    addBtn.onclick = async () => {
+      const title = titleInput.value.trim();
+      if (!title) return;
+      addBtn.disabled = true;
+      try {
+        const search = await tmdb("/search/movie", { query: title });
+        const movie = search.results?.[0];
+        if (movie) {
+          const details = await tmdb(`/movie/${movie.id}`, { append_to_response: "watch/providers" });
+          state.items.unshift({
+            id: crypto.randomUUID(),
+            title: movie.title,
+            year: movie.release_date?.split("-")[0],
+            poster: movie.poster_path,
+            vibe: details.genres?.map(g => g.name).join(" / "),
+            services: details["watch/providers"]?.results?.US?.flatrate?.map(p => p.provider_name) || [],
+            status: "to_watch",
+            tmdbId: movie.id
+          });
+          titleInput.value = "";
+          await saveState();
+          render();
+        }
+      } catch (e) { console.error(e); }
+      addBtn.disabled = false;
+    };
+
+    fixPostersBtn.onclick = async () => {
+      fixPostersBtn.disabled = true;
+      fixPostersBtn.textContent = "Fixing...";
+      let count = 0;
+      for (let it of state.items) {
+        if (!it.poster && it.tmdbId) {
           try {
-            const incoming = JSON.parse(ioText.value);
-            if (incoming.items) { state = incoming; await saveState(); render(); ioDlg.close(); }
-          } catch (e) { alert("Invalid JSON"); }
-        };
+            const d = await tmdb(`/movie/${it.tmdbId}`);
+            if (d.poster_path) { it.poster = d.poster_path; count++; }
+          } catch (e) {}
+        }
       }
-    }
+      if (count > 0) { await saveState(); render(); alert(`Fixed ${count}!`); }
+      fixPostersBtn.disabled = false;
+      fixPostersBtn.textContent = "Fix Old Posters";
+    };
 
-    addBtn.onclick = autoAdd;
-    titleInput.onkeydown = e => e.key === "Enter" && autoAdd();
     q.oninput = render;
     sf.onchange = render;
     vf.onchange = render;
     sv.onchange = render;
-    clearBtn.onclick = () => { q.value = ""; sf.value = "all"; vf.value = "all"; sv.value = "all"; render(); };
-    exportBtn.onclick = () => openIO("export");
-    importBtn.onclick = () => openIO("import");
-    
-    // Magic Script
-    const fixPostersBtn = $("fixPostersBtn");
-    fixPostersBtn.onclick = async () => {
-        fixPostersBtn.disabled = true;
-        fixPostersBtn.textContent = "Updating...";
-        let count = 0;
-        for (let it of state.items) {
-            if (!it.poster && it.tmdbId) {
-                try {
-                    const details = await tmdb(`/movie/${it.tmdbId}`);
-                    if (details.poster_path) { it.poster = details.poster_path; count++; }
-                } catch (e) { console.error(e); }
-            }
-        }
-        if (count > 0) { await saveState(); render(); alert(`Fixed ${count} posters!`); }
-        else alert("No missing posters found.");
-        fixPostersBtn.disabled = false;
-        fixPostersBtn.textContent = "Fix Old Posters";
-    };
 
     (async () => {
       await loadState();
