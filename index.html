@@ -5,101 +5,62 @@
   <title>Moviecation</title>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <style>
-    :root{
-      --bg:#020617; --card:#0b1222; --line:#1f2937;
-      --text:#e5e7eb; --muted:#9ca3af; --accent:#8b5cf6;
-      --good:#22c55e; --bad:#ef4444;
-      --r:14px;
-    }
+    :root{--bg:#020617;--card:#0b1222;--line:#1f2937;--text:#e5e7eb;--muted:#9ca3af;--accent:#8b5cf6;--good:#22c55e;--bad:#ef4444;--r:14px;}
     *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:radial-gradient(circle at top,#1f2937 0,#020617 55%) fixed;color:var(--text)}
+    body{margin:0;font-family:system-ui,sans-serif;background:radial-gradient(circle at top,#1f2937 0,#020617 55%) fixed;color:var(--text)}
     header{position:sticky;top:0;z-index:10;background:rgba(2,6,23,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
     .wrap{max-width:980px;margin:0 auto;padding:16px}
-    h1{margin:0 0 4px;font-size:22px}
-    .sub{margin:0 0 12px;color:var(--muted);font-size:14px}
-    .pill{padding:4px 10px;background:var(--line);border-radius:20px;font-size:12px;font-weight:600}
     .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:20px}
     .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
     .grow{flex:1;min-width:200px}
     input,select,button{background:var(--bg);border:1px solid var(--line);color:inherit;padding:10px 14px;border-radius:10px;font-size:14px;outline:0}
-    input:focus{border-color:var(--accent)}
-    button{cursor:pointer;font-weight:600;transition:opacity .2s}
-    button:hover{opacity:.8}
-    button:disabled{opacity:.4;cursor:default}
-    .primary{background:var(--accent);border:0}
-    .item{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-bottom:12px;animation:in .3s ease-out}
-    @keyframes in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-    .title{font-weight:700;font-size:16px}
-    .chips{display:flex;gap:6px;margin:8px 0;flex-wrap:wrap}
-    .chip{font-size:11px;padding:2px 8px;border-radius:6px;background:var(--bg);border:1px solid var(--line);color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-    .chip.w{border-color:rgba(34,197,94,.7);color:#bbf7d0}
-    .chip.s{border-color:rgba(239,68,68,.7);color:#fecaca}
-    .actions{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px}
-    .good{border-color:rgba(34,197,94,.7);background:rgba(34,197,94,.12)}
-    .bad{border-color:rgba(239,68,68,.7);background:rgba(239,68,68,.12)}
-    dialog{border:none;border-radius:16px;padding:0;background:#0b1222;color:var(--text);max-width:500px;width:min(900px,95vw)}
-    dialog::backdrop{background:rgba(0,0,0,.8)}
-    .modal{padding:24px}
-    textarea{width:100%;min-height:260px;background:#020617;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px}
+    button{cursor:pointer;font-weight:600}.primary{background:var(--accent);border:0}
+    .item{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-bottom:12px;display:flex;gap:16px}
+    .chip{font-size:11px;padding:2px 8px;border-radius:6px;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+    .pill{padding:4px 10px;background:var(--line);border-radius:20px;font-size:12px;font-weight:600}
   </style>
 </head>
 <body>
   <header>
     <div class="wrap">
-      <div class="row" style="justify-content:space-between;align-items:flex-end">
-        <div>
-          <h1>Moviecation</h1>
-          <p class="sub">Syncs across devices. Add by title.</p>
-        </div>
+      <div class="row" style="justify-content:space-between">
+        <h1>Moviecation</h1>
         <span id="statusPill" class="pill">loading...</span>
       </div>
       <div class="card">
         <div class="row">
-          <input id="titleInput" class="grow" placeholder="Add a title..." />
-          <button id="addBtn" class="primary">Auto-Add</button>
+          <input id="titleInput" class="grow" placeholder="Movie Title..." />
+          <button id="addBtn" class="primary">Add Movie</button>
           <input id="q" class="grow" placeholder="Search..." />
-          <select id="sf">
-            <option value="all">All statuses</option>
-            <option value="to_watch">To watch</option>
-            <option value="watched">Watched</option>
-            <option value="skipped">Skipped</option>
-          </select>
-          <select id="vf"><option value="all">All vibes</option></select>
-          <select id="sv"><option value="all">All services</option></select>
-          <button id="clearBtn">Clear</button>
-          <button id="fixPostersBtn" style="background:#f39c12">Fix Old Posters</button>
-        </div>
-        <div class="kpis" style="margin-top:10px; font-size:12px; color:var(--muted);">
-          <span id="kAll"><b>0</b> total</span> • <span id="kTo"><b>0</b> to watch</span> • <span id="kW"><b>0</b> watched</span>
+          <button id="fixPostersBtn" style="background:#f39c12">Fix Posters</button>
         </div>
       </div>
     </div>
   </header>
-
   <main class="wrap" id="listEl"></main>
 
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-client@2";
-    
-    // PASTE YOUR KEYS HERE
+
+    // 1. PUT YOUR ACTUAL KEYS HERE
     const supabase = createClient("https://fbiozabfithghkuldxgr.supabase.co", "sb_publishable_f_LdLwHeoEruDdwNtR77Yw_ceZw9e87");
 
     const $ = id => document.getElementById(id);
     const esc = s => s ? s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : "";
-
     let state = { items: [] };
 
-    window.loadState = async function() {
+    // 2. DEFINE FUNCTIONS LOCALLY SO THEY CAN SEE EACH OTHER
+    async function loadState() {
       const { data } = await supabase.from("app_state").select("content").eq("id", 1).single();
       if (data) state = data.content;
       statusPill.textContent = "synced";
-    };
+    }
 
-    window.saveState = async function() {
+    async function saveState() {
       statusPill.textContent = "saving...";
       await supabase.from("app_state").upsert({ id: 1, content: state });
       statusPill.textContent = "synced";
-    };
+    }
 
     async function tmdb(path, params = {}) {
       const query = new URLSearchParams({ api_key: "69383688e1462002167d581559869680", ...params }).toString();
@@ -107,60 +68,24 @@
       return res.json();
     }
 
-    window.render = function() {
+    function render() {
       const query = q.value.toLowerCase();
-      const sFilter = sf.value;
-      const vFilter = vf.value;
-      const svFilter = sv.value;
-
-      const vibes = new Set();
-      const svcsList = new Set();
-      state.items.forEach(it => {
-        if (it.vibe) it.vibe.split(" / ").forEach(v => vibes.add(v));
-        if (it.services) it.services.forEach(s => svcsList.add(s));
-      });
-
-      vf.innerHTML = '<option value="all">All vibes</option>' + [...vibes].sort().map(v => `<option value="${v}" ${vFilter===v?'selected':''}>${v}</option>`).join("");
-      sv.innerHTML = '<option value="all">All services</option>' + [...svcsList].sort().map(s => `<option value="${s}" ${svFilter===s?'selected':''}>${s}</option>`).join("");
-
-      const filtered = state.items.filter(it => {
-        const matchesQ = it.title.toLowerCase().includes(query);
-        const matchesS = sFilter === "all" || it.status === sFilter;
-        const matchesV = vFilter === "all" || (it.vibe && it.vibe.includes(vFilter));
-        const matchesSv = svFilter === "all" || (it.services && it.services.includes(svFilter));
-        return matchesQ && matchesS && matchesV && matchesSv;
-      });
-
-      kAll.innerHTML = `<b>${state.items.length}</b> total`;
-      kTo.innerHTML = `<b>${state.items.filter(i => i.status === "to_watch").length}</b> to watch`;
-      kW.innerHTML = `<b>${state.items.filter(i => i.status === "watched").length}</b> watched`;
-
-      listEl.innerHTML = filtered.map(it => {
-        const stText = it.status === "watched" ? "Watched" : it.status === "skipped" ? "Skipped" : "To watch";
-        const stChip = it.status === "watched" ? "w" : it.status === "skipped" ? "s" : "";
-        const svcs = (it.services || []).map(s => `<span class="chip">${esc(s)}</span>`).join("") || '<span class="chip">Unknown</span>';
-        const posterUrl = it.poster ? `https://image.tmdb.org/t/p/w185${it.poster}` : `https://via.placeholder.com/185x278?text=No+Poster`;
-
-        return `
-          <div class="item" style="display:flex; gap:16px;">
-            <img src="${posterUrl}" style="width:100px; border-radius:8px; aspect-ratio:2/3; object-fit:cover;">
-            <div style="flex:1;">
-              <div class="title">${esc(it.title)} ${it.year ? `<span class="chip">${it.year}</span>` : ""}</div>
-              <div class="chips">
-                <span class="chip ${stChip}">${stText}</span>
-                <span class="chip">${esc(it.vibe || "No vibe")}</span>
-              </div>
-              <div class="chips">${svcs}</div>
-              <div class="actions">
-                <button class="good" data-status="${it.id}:watched">Watched</button>
-                <button class="bad" data-status="${it.id}:skipped">Skipped</button>
-                <button data-status="${it.id}:to_watch">To watch</button>
-                <button data-del="${it.id}">Delete</button>
-              </div>
+      const filtered = state.items.filter(it => it.title.toLowerCase().includes(query));
+      
+      listEl.innerHTML = filtered.map(it => `
+        <div class="item">
+          <img src="https://image.tmdb.org/t/p/w185${it.poster}" style="width:80px;border-radius:8px;aspect-ratio:2/3;object-fit:cover">
+          <div style="flex:1">
+            <div style="font-weight:700">${esc(it.title)}</div>
+            <div class="chips"><span class="chip">${it.status}</span></div>
+            <div style="margin-top:10px; display:flex; gap:8px;">
+              <button style="border-color:#22c55e" data-status="${it.id}:watched">Watched</button>
+              <button style="border-color:#ef4444" data-del="${it.id}">Delete</button>
             </div>
-          </div>`;
-      }).join("");
+          </div>
+        </div>`).join("");
 
+      // Re-attach button clicks after rendering
       listEl.querySelectorAll("[data-status]").forEach(b => {
         b.onclick = async () => {
           const [id, to] = b.getAttribute("data-status").split(":");
@@ -173,61 +98,41 @@
         b.onclick = async () => {
           const id = b.getAttribute("data-del");
           state.items = state.items.filter(x => x.id !== id);
-          await saveState();
-          render();
+          await saveState(); render();
         };
       });
-    };
+    }
 
+    // 3. EVENT HANDLERS
     addBtn.onclick = async () => {
       const title = titleInput.value.trim();
-      if (!title) return;
+      if(!title) return;
       addBtn.disabled = true;
-      try {
-        const search = await tmdb("/search/movie", { query: title });
-        const movie = search.results?.[0];
-        if (movie) {
-          const details = await tmdb(`/movie/${movie.id}`, { append_to_response: "watch/providers" });
-          state.items.unshift({
-            id: crypto.randomUUID(),
-            title: movie.title,
-            year: movie.release_date?.split("-")[0],
-            poster: movie.poster_path,
-            vibe: details.genres?.map(g => g.name).join(" / "),
-            services: details["watch/providers"]?.results?.US?.flatrate?.map(p => p.provider_name) || [],
-            status: "to_watch",
-            tmdbId: movie.id
-          });
-          titleInput.value = "";
-          await saveState();
-          render();
-        }
-      } catch (e) { console.error(e); }
+      const res = await tmdb("/search/movie", { query: title });
+      if(res.results?.[0]) {
+        const m = res.results[0];
+        state.items.unshift({ id: crypto.randomUUID(), title: m.title, poster: m.poster_path, status: 'to_watch', tmdbId: m.id });
+        titleInput.value = "";
+        await saveState(); render();
+      }
       addBtn.disabled = false;
     };
 
     fixPostersBtn.onclick = async () => {
-      fixPostersBtn.disabled = true;
-      fixPostersBtn.textContent = "Fixing...";
-      let count = 0;
+      fixPostersBtn.textContent = "Updating...";
       for (let it of state.items) {
         if (!it.poster && it.tmdbId) {
-          try {
-            const d = await tmdb(`/movie/${it.tmdbId}`);
-            if (d.poster_path) { it.poster = d.poster_path; count++; }
-          } catch (e) {}
+          const d = await tmdb(`/movie/${it.tmdbId}`);
+          if (d.poster_path) it.poster = d.poster_path;
         }
       }
-      if (count > 0) { await saveState(); render(); alert(`Fixed ${count}!`); }
-      fixPostersBtn.disabled = false;
-      fixPostersBtn.textContent = "Fix Old Posters";
+      await saveState(); render();
+      fixPostersBtn.textContent = "Fix Posters";
     };
 
     q.oninput = render;
-    sf.onchange = render;
-    vf.onchange = render;
-    sv.onchange = render;
 
+    // 4. THE STARTING ENGINE
     (async () => {
       await loadState();
       render();
