@@ -720,8 +720,9 @@
     el("kWatched").textContent = watched;
     el("kSkipped").textContent = skipped;
 
+    // Show most recently added items first by sorting on createdAt/updatedAt desc
     const items = (typeof applyFilters === 'function' ? applyFilters(state.items.slice()) : state.items.slice())
-      .sort((a,b) => (a.title||"").localeCompare(b.title||""));
+      .sort((a,b) => Number(b.createdAt || b.updatedAt || 0) - Number(a.createdAt || a.updatedAt || 0));
 
     listEl.innerHTML = items.map(it => {
       const svcChips = (it.services||[]).map(s => `<span class="chip">${esc(s)}</span>`).join("");
