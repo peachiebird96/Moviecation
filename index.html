@@ -395,8 +395,25 @@ function applyFilters(items){
   const PROVIDER_URL_TEMPLATES = {
     'netflix': (t) => `https://www.netflix.com/search?q=${t}`,
     'hulu': (t) => `https://www.hulu.com/search?query=${t}`,
-    'disney+': (t) => `https://www.disneyplus.com/search/${t}`,
-    'disney plus': (t) => `https://www.disneyplus.com/search/${t}`,
+    // Prefer app/opening behavior: Android intent tries to open the Disney+ app;
+    // on other platforms use the Disney+ universal link (may open app if configured),
+    // fallback to JustWatch search when provider-specific link isn't available.
+    'disney+': (t) => {
+      try{
+        const q = encodeURIComponent(t);
+        const isAndroid = (typeof navigator !== 'undefined') && /Android/i.test(navigator.userAgent);
+        if (isAndroid) return `intent://search?q=${q}#Intent;package=com.disney.disneyplus;scheme=disneyplus;end`;
+        return `https://www.disneyplus.com/search?query=${q}`;
+      }catch(e){ return `https://www.justwatch.com/us/search?q=${encodeURIComponent(t)}`; }
+    },
+    'disney plus': (t) => {
+      try{
+        const q = encodeURIComponent(t);
+        const isAndroid = (typeof navigator !== 'undefined') && /Android/i.test(navigator.userAgent);
+        if (isAndroid) return `intent://search?q=${q}#Intent;package=com.disney.disneyplus;scheme=disneyplus;end`;
+        return `https://www.disneyplus.com/search?query=${q}`;
+      }catch(e){ return `https://www.justwatch.com/us/search?q=${encodeURIComponent(t)}`; }
+    },
     'max': (t) => `https://www.hbomax.com/search?q=${t}`,
     'hbo max': (t) => `https://www.hbomax.com/search?q=${t}`,
     'prime video': (t) => `https://www.amazon.com/s?k=${t}&i=instant-video`,
