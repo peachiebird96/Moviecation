@@ -770,6 +770,13 @@ function applyFilters(items){
         ? `<img src="https://image.tmdb.org/t/p/w200${it.poster_path}" style="width:90px; border-radius:10px; float:left; margin-right:15px; box-shadow: var(--shadow);">` 
         : `<div style="width:90px; height:135px; background:var(--chip); float:left; margin-right:15px; border-radius:10px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:11px; color:var(--muted)">No Image</div>`;
 
+      const actionButtons = (String(it.status || '') !== 'watched' && String(it.status || '') !== 'skipped')
+        ? `<div class="actions" style="margin-top:12px">
+             <button class="btn good" data-set="${it.id}" data-to="watched">Watched</button>
+             <button class="btn bad" data-set="${it.id}" data-to="skipped">Skip</button>
+           </div>`
+        : ``;
+
       return `
         <div class="card item" style="display:block; overflow:hidden; padding:15px;">
           ${posterImg}
@@ -784,10 +791,7 @@ function applyFilters(items){
             </div>
             <p style="font-size:13px; color:var(--muted); line-height:1.4; margin:8px 0">${esc(it.description || "No description available.")}</p>
             <div class="meta" style="gap:6px">${svcChips}</div>
-            <div class="actions" style="margin-top:12px">
-              <button class="btn good" data-set="${it.id}" data-to="watched">Watched</button>
-              <button class="btn bad" data-set="${it.id}" data-to="skipped">Skip</button>
-            </div>
+            ${actionButtons}
           </div>
           <div style="clear:both;"></div>
         </div>
