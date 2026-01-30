@@ -114,10 +114,6 @@
       <div id="resultsSummary" class="results-summary"></div>
 
       </div>
-
-      <div class="row" style="margin-top:10px; gap:8px">
-        <span class="small">TMDB key required. Put it in the code below (1e07b8a005c4ee244fc4cf365bd49c49).</span>
-      </div>
     </div>
   </div>
 </header>
@@ -754,8 +750,8 @@ function applyFilters(items){
 
     // Apply filters, show counts, then sort newest-first
     const filtered = (typeof applyFilters === 'function' ? applyFilters(state.items.slice()) : state.items.slice());
-    const activeFiltersText = `Filters — status: ${statusFilterEl.value}, vibe: ${vibeFilterEl.value}, service: ${serviceFilterEl.value}, q: "${qEl.value || ''}"`;
-    resultsSummaryEl.textContent = `${filtered.length} / ${state.items.length} items — ${activeFiltersText}`;
+    const activeFiltersText = `status: ${statusFilterEl.value}, vibe: ${vibeFilterEl.value}, service: ${serviceFilterEl.value}, q: "${qEl.value || ''}"`;
+    resultsSummaryEl.textContent = `${filtered.length} / ${state.items.length} — ${activeFiltersText}`;
     console.debug('Filters:', { q: qEl.value, status: statusFilterEl.value, vibe: vibeFilterEl.value, service: serviceFilterEl.value, filtered: filtered.length });
 
     const items = filtered.sort((a,b) => Number(b.createdAt || b.updatedAt || 0) - Number(a.createdAt || a.updatedAt || 0));
