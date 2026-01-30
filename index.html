@@ -210,6 +210,7 @@
     "Netflix","Hulu","Disney Plus","Disney+","Max","HBO Max","Prime Video","Amazon Prime Video","Peacock",
     "Paramount Plus","Paramount+","Apple TV","Apple TV+","YouTube","Google Play Movies","Fandango At Home",
     "Tubi TV","Pluto TV","Roku Channel","The Roku Channel"
+  ];
 
 // Apply current UI filters to a list of items and return the filtered array
 function applyFilters(items){
@@ -231,7 +232,6 @@ function applyFilters(items){
     return true;
   });
 }
-  ];
 
   // Seed: start empty (since auto-add is the feature)
   let state = load() ?? { version: APP_VERSION, items: [] };
