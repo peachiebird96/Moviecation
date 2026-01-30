@@ -257,6 +257,13 @@
       }
     }, 250);
   }
+  // Expose helpers for debugging/console use (safe, read-only accessor for state)
+  try{
+    window._supabase = _supabase;
+    Object.defineProperty(window, '_appState', { get: () => state });
+    window._saveSoon = () => { try{ saveSoon(); }catch(e){console.warn(e);} };
+    window._initRemoteSync = () => { try{ initRemoteSync(); }catch(e){console.warn(e);} };
+  }catch(e){ /* ignore in tightly locked environments */ }
   function load(){
     try{
       const raw = localStorage.getItem(STORAGE_KEY);
