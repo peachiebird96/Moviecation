@@ -873,11 +873,12 @@ function applyFilters(items){
 
     listEl.innerHTML = items.map(it => {
         const svcChips = (it.services||[]).map(s => {
+          const pkey = normalizeServiceName(s).toLowerCase();
           const url = getProviderSearchUrl(s, it.title, it.year, it.type, it.tmdbId);
           // For non-http(s) schemes (intent:, vnd:, etc.) prefer opening in same context
           const isHttp = String(url).toLowerCase().startsWith('http');
           const attrs = isHttp ? ' target="_blank" rel="noopener noreferrer"' : '';
-          return `<a class="chip-link" href="${url}"${attrs}><span class="chip service">${esc(s)}</span></a>`;
+          return `<a class="chip-link" href="${url}" data-pkey="${esc(pkey)}" data-title="${esc(it.title)}"${attrs}><span class="chip service">${esc(s)}</span></a>`;
         }).join("");
         const posterImg = it.poster_path 
           ? `<img src="https://image.tmdb.org/t/p/w200${it.poster_path}" style="width:90px; height:135px; border-radius:10px; box-shadow: var(--shadow); object-fit:cover; display:block">` 
@@ -1062,6 +1063,38 @@ function applyFilters(items){
 [statusFilterEl, vibeFilterEl, serviceFilterEl].forEach(x => {
   x.addEventListener("change", (e) => { console.debug('filter changed', { id: e.currentTarget.id, value: e.currentTarget.value }); render(); });
 });
+
+  // Global click handler for provider chips: attempt better app-open behavior
+  document.addEventListener('click', (e) => {
+    try{
+      const a = e.target.closest && e.target.closest('a.chip-link');
+      if (!a) return;
+      const pkey = (a.getAttribute('data-pkey') || '').toLowerCase();
+      const title = a.getAttribute('data-title') || '';
+      const href = a.getAttribute('href') || '';
+      const ua = navigator.userAgent || '';
+      const isAndroid = /Android/i.test(ua);
+      const isIOS = /iPhone|iPad|iPod/i.test(ua);
+      const isDesktop = !isAndroid && !isIOS;
+
+      // If this is Disney+ on desktop, the provider search URL sometimes 404s.
+      // Prefer opening a JustWatch provider-specific search on desktop to avoid errors.
+      if (pkey === 'disney+' || pkey === 'disney plus'){
+        if (isDesktop){
+          e.preventDefault();
+          const jw = `https://www.justwatch.com/us/search?q=${encodeURIComponent(title)}`;
+          window.open(jw, '_blank', 'noopener');
+          return;
+        }
+        // On mobile, let the anchor proceed (it may open app or universal link).
+        return;
+      }
+
+      // For other providers, if the href uses a non-http scheme (intent:, vnd:, etc.)
+      // allow navigation in the same window (do nothing) so the OS can handle it.
+      // If it's an http(s) link we allow default behavior (some are target=_blank).
+    }catch(e){ /* swallow handler errors */ }
+  });
 
   // Clear filters
   if (clearFiltersBtn){
