@@ -210,6 +210,27 @@
     "Netflix","Hulu","Disney Plus","Disney+","Max","HBO Max","Prime Video","Amazon Prime Video","Peacock",
     "Paramount Plus","Paramount+","Apple TV","Apple TV+","YouTube","Google Play Movies","Fandango At Home",
     "Tubi TV","Pluto TV","Roku Channel","The Roku Channel"
+
+// Apply current UI filters to a list of items and return the filtered array
+function applyFilters(items){
+  const q = (qEl.value || "").trim().toLowerCase();
+  const status = statusFilterEl.value || 'all';
+  const vibe = vibeFilterEl.value || 'all';
+  const service = serviceFilterEl.value || 'all';
+
+  return items.filter(it => {
+    if (status !== 'all' && it.status !== status) return false;
+    if (vibe !== 'all' && it.vibe !== vibe) return false;
+    if (service !== 'all'){
+      if (!Array.isArray(it.services) || !it.services.includes(service)) return false;
+    }
+    if (q){
+      const hay = (`${it.title || ''} ${it.description || ''} ${(it.genres || []).join(' ')}`).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
   ];
 
   // Seed: start empty (since auto-add is the feature)
