@@ -219,6 +219,8 @@ function applyFilters(items){
   const vibe = vibeFilterEl.value || 'all';
   const service = serviceFilterEl.value || 'all';
 
+  console.debug('applyFilters called', { q, status, vibe, service, itemsCount: items.length });
+
   return items.filter(it => {
     if (status !== 'all' && it.status !== status) return false;
     if (vibe !== 'all' && it.vibe !== vibe) return false;
