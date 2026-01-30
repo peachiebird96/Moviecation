@@ -70,6 +70,10 @@
   font-size: 13px;
   color: var(--muted);
 }
+  /* On small screens the toolbar can be very tall; disable sticky header so it scrolls away */
+  @media (max-width:720px){
+    header{position:static; top:auto; z-index:1}
+  }
 </style>
 
 </head>
