@@ -425,6 +425,96 @@ function applyFilters(items){
     'fandango': (t) => { const q = encodeURIComponent(t); return `https://www.fandango.com/search?q=${q}`; }
   };
 
+  // App-open candidate generators: per-provider arrays of candidate URIs (best-effort)
+  const APP_OPEN_CANDIDATES = {
+    'disney+': (ctx) => [
+      // prefer intent on Android (handled by link templates); on iOS try scheme with search
+      `disneyplus://content/`,
+      `disneyplus://search?query=${encodeURIComponent(ctx.title)}`,
+      `https://www.disneyplus.com/search?query=${encodeURIComponent(ctx.title)}`
+    ],
+    'netflix': (ctx) => [
+      `nflx://www.netflix.com/title/${encodeURIComponent(ctx.tmdbId||'')}`,
+      `https://www.netflix.com/search?q=${encodeURIComponent(ctx.title)}`
+    ],
+    'hulu': (ctx) => [
+      `hulu://search?query=${encodeURIComponent(ctx.title)}`,
+      `https://www.hulu.com/search?query=${encodeURIComponent(ctx.title)}`
+    ],
+    'prime video': (ctx) => [
+      `amazon://search?k=${encodeURIComponent(ctx.title)}`,
+      `https://www.amazon.com/s?k=${encodeURIComponent(ctx.title)}&i=instant-video`
+    ],
+    'hbo max': (ctx) => [
+      `hbomax://search?query=${encodeURIComponent(ctx.title)}`,
+      `https://www.hbomax.com/search?q=${encodeURIComponent(ctx.title)}`
+    ],
+    'peacock': (ctx) => [
+      `peacock://search?query=${encodeURIComponent(ctx.title)}`,
+      `https://www.peacocktv.com/search?q=${encodeURIComponent(ctx.title)}`
+    ],
+    'tubi': (ctx) => [
+      `tubitv://search?query=${encodeURIComponent(ctx.title)}`,
+      `https://tubitv.com/search?query=${encodeURIComponent(ctx.title)}`
+    ],
+    // fallback generator: just use provider template url and JustWatch
+    'default': (ctx) => [
+      (PROVIDER_URL_TEMPLATES[ctx.key] ? PROVIDER_URL_TEMPLATES[ctx.key](ctx.title) : null),
+      `https://www.justwatch.com/us/search?q=${encodeURIComponent(ctx.title)}`
+    ]
+  };
+
+  // Try to open provider app by attempting candidate URIs sequentially with short delays.
+  // This is best-effort: some schemes will open the app, some won't. We use timeouts
+  // and do not attempt complex visibility detection to keep behavior simple and robust.
+  async function openProviderFlow(a){
+    const pkey = (a.getAttribute('data-pkey') || '').toLowerCase();
+    const title = a.getAttribute('data-title') || '';
+    const tmdbId = a.getAttribute('data-tmdbid') || '';
+    const tmdbType = a.getAttribute('data-tmdbtype') || '';
+    const href = a.getAttribute('href') || '';
+    const ua = navigator.userAgent || '';
+    const isAndroid = /Android/i.test(ua);
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+    const ctx = { key: pkey, title, tmdbId, tmdbType };
+    const gen = APP_OPEN_CANDIDATES[pkey] || APP_OPEN_CANDIDATES['default'];
+    const candidates = (Array.isArray(gen) ? gen : gen(ctx)).filter(Boolean);
+
+    // Desktop: open provider template or JustWatch in new tab
+    if (!isAndroid && !isIOS){
+      if (PROVIDER_URL_TEMPLATES[pkey]){
+        const u = PROVIDER_URL_TEMPLATES[pkey](title);
+        window.open(u, '_blank', 'noopener');
+      } else {
+        window.open(`https://www.justwatch.com/us/search?q=${encodeURIComponent(title)}`, '_blank', 'noopener');
+      }
+      return;
+    }
+
+    // On mobile: attempt candidates sequentially
+    for (let i=0;i<candidates.length;i++){
+      const u = candidates[i];
+      if (!u) continue;
+      try{
+        // if it's an http(s) link and not last, try to navigate then wait; if it's a scheme,
+        // set location directly which should invoke the OS handler.
+        if (String(u).startsWith('http')){
+          // let the browser try universal link (opens app if configured)
+          window.location = u;
+        } else {
+          // non-http scheme (intent:, netflix scheme, etc.)
+          window.location = u;
+        }
+      }catch(e){ /* ignore */ }
+      // wait briefly to let the OS handle the attempt; if it didn't, try next
+      await new Promise(r => setTimeout(r, 700));
+    }
+
+    // final fallback: JustWatch in a new tab
+    window.open(`https://www.justwatch.com/us/search?q=${encodeURIComponent(title)}`, '_blank', 'noopener');
+  }
+
   function getProviderSearchUrl(rawServiceName, title, year, tmdbType, tmdbId){
     const clean = String(rawServiceName || '').replace(/\s*\(.*\)$/, '').trim(); // drop (Free)/(Ads)
     const key = normalizeServiceName(clean).toLowerCase();
@@ -744,9 +834,11 @@ function applyFilters(items){
     if (c.kind === "movie"){
       details = await tmdb(`/movie/${c.id}`, { language:"en-US" });
       providers = await tmdb(`/movie/${c.id}/watch/providers`);
+      try{ var external = await tmdb(`/movie/${c.id}/external_ids`); }catch(e){ external = null; }
     } else {
       details = await tmdb(`/tv/${c.id}`, { language:"en-US" });
       providers = await tmdb(`/tv/${c.id}/watch/providers`);
+      try{ var external = await tmdb(`/tv/${c.id}/external_ids`); }catch(e){ external = null; }
     }
 
     const region = providers?.results?.[TMDB_REGION];
@@ -775,6 +867,7 @@ function applyFilters(items){
       vibe: vibeFromGenres(genres, title),
       services,
       genres: genres.map(g=>g.name),
+      external_ids: external || null,
       tmdbId: details.id,
       tmdbType: c.kind === "movie" ? 'movie' : 'tv',
       createdAt: Date.now()
@@ -810,6 +903,7 @@ function applyFilters(items){
       description: details.overview,
       poster_path: details.poster_path,
       genres: (details.genres || []).map(g=>g.name),
+      external_ids: (await (async function(){ try{ return await tmdb(`/${typePath}/${c.id}/external_ids`); }catch(e){return null;} })()),
       tmdbId: details.id,
       tmdbType: c.kind === "movie" ? 'movie' : 'tv',
       createdAt: Date.now(),
@@ -878,7 +972,7 @@ function applyFilters(items){
           // For non-http(s) schemes (intent:, vnd:, etc.) prefer opening in same context
           const isHttp = String(url).toLowerCase().startsWith('http');
           const attrs = isHttp ? ' target="_blank" rel="noopener noreferrer"' : '';
-          return `<a class="chip-link" href="${url}" data-pkey="${esc(pkey)}" data-title="${esc(it.title)}"${attrs}><span class="chip service">${esc(s)}</span></a>`;
+          return `<a class="chip-link" href="${url}" data-pkey="${esc(pkey)}" data-title="${esc(it.title)}" data-tmdbid="${esc(it.tmdbId||'')}" data-tmdbtype="${esc(it.tmdbType||'')}"${attrs}><span class="chip service">${esc(s)}</span></a>`;
         }).join("");
         const posterImg = it.poster_path 
           ? `<img src="https://image.tmdb.org/t/p/w200${it.poster_path}" style="width:90px; height:135px; border-radius:10px; box-shadow: var(--shadow); object-fit:cover; display:block">` 
@@ -1069,49 +1163,29 @@ function applyFilters(items){
     try{
       const a = e.target.closest && e.target.closest('a.chip-link');
       if (!a) return;
+
       const pkey = (a.getAttribute('data-pkey') || '').toLowerCase();
       const title = a.getAttribute('data-title') || '';
       const href = a.getAttribute('href') || '';
       const ua = navigator.userAgent || '';
       const isAndroid = /Android/i.test(ua);
       const isIOS = /iPhone|iPad|iPod/i.test(ua);
-      const isDesktop = !isAndroid && !isIOS;
 
-      // If this is Disney+ on desktop, the provider search URL sometimes 404s.
-      // Prefer opening a JustWatch provider-specific search on desktop to avoid errors.
-      if (pkey === 'disney+' || pkey === 'disney plus'){
+      // For any provider chip on mobile, run the app-open flow; on desktop open provider or JustWatch
+      if (isAndroid || isIOS){
         e.preventDefault();
-        // Desktop: open JustWatch to avoid provider 404s
-        if (isDesktop){
-          const jw = `https://www.justwatch.com/us/search?q=${encodeURIComponent(title)}`;
-          window.open(jw, '_blank', 'noopener');
-          return;
-        }
-
-        // Mobile (iOS/Android): attempt app-specific scheme first, then universal link, then JustWatch
-        const enc = encodeURIComponent(title);
-        // some Android browsers handle intent: links well (we already used intent: earlier),
-        // on iOS try the app URL scheme (best-effort). If it fails, fall back to Disney+ web search,
-        // then JustWatch as a last resort.
-        if (isIOS){
-          try{
-            // Try Disney+ custom scheme search (user gesture required; may or may not be supported)
-            window.location = `disneyplus://search?query=${enc}`;
-          }catch(_){ }
-          // After a short delay, open the Disney+ web search (this may trigger Universal Link -> app)
-          setTimeout(() => {
-            const u = `https://www.disneyplus.com/search?query=${enc}`;
-            // open in same tab so Universal Link can be handled by the OS
-            window.location = u;
-            // final fallback after another delay -> JustWatch in a new tab
-            setTimeout(() => window.open(`https://www.justwatch.com/us/search?q=${enc}`, '_blank', 'noopener'), 900);
-          }, 600);
-          return;
-        }
-
-        // For Android, allow the anchor to proceed (intent: link will be used by template)
+        // use the sequential open flow
+        openProviderFlow(a);
         return;
       }
+
+      // Desktop: for Disney+ prefer JustWatch (avoids 404). Other providers use provider templates.
+      if (pkey === 'disney+' || pkey === 'disney plus'){
+        e.preventDefault();
+        window.open(`https://www.justwatch.com/us/search?q=${encodeURIComponent(title)}`, '_blank', 'noopener');
+        return;
+      }
+      // else let the anchor behave normally (some anchors are target=_blank already)
 
       // For other providers, if the href uses a non-http scheme (intent:, vnd:, etc.)
       // allow navigation in the same window (do nothing) so the OS can handle it.
