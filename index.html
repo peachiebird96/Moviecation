@@ -46,12 +46,19 @@
     .title{font-size:16px;font-weight:700;line-height:1.25}
     .meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     .chip{font-size:12px;background:var(--chip);border:1px solid #2b3a55;padding:5px 8px;border-radius:999px}
+    .chip-link{display:inline-block;text-decoration:none}
+    .chip-link .chip{cursor:pointer}
     .chip.vibe{color:#e9d5ff;border-color:rgba(139,92,246,.45)}
     .chip.service{color:#bbf7d0;border-color:rgba(34,197,94,.35)}
     .chip.buy{color:#fde68a;border-color:rgba(245,158,11,.35)}
     .chip.unk{color:#cbd5e1;border-color:#334155}
     .chip.watched{color:#bbf7d0;border-color:rgba(34,197,94,.55)}
     .chip.skipped{color:#fecaca;border-color:rgba(239,68,68,.55)}
+    .chip.to_watch{color:#e5e7eb;border-color:rgba(139,92,246,.35)}
+    /* clearer transparent backgrounds when status is final */
+    .chip.watched{background:rgba(34,197,94,.08)}
+    .chip.skipped{background:rgba(239,68,68,.06)}
+    .chip.to_watch{background:rgba(139,92,246,.04)}
     .muted{color:var(--muted);font-size:13px}
     .actions{display:flex;gap:8px;flex-wrap:wrap}
     .modalWrap{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:16px;z-index:999}
@@ -262,6 +269,42 @@ function applyFilters(items){
   const ioClose = el("ioClose");
 
   let saveTimer = null;
+  const UNDO_DURATION_MS = 8000; // 8 seconds
+  const undoTimers = new Map(); // map itemId -> timeout
+
+  function scheduleUndoForItem(it){
+    if (!it || !it.id) return;
+    // clear existing timer
+    clearUndoTimer(it.id);
+    const expires = Number(it._undoExpiresAt || 0);
+    const ms = Math.max(0, expires - Date.now());
+    if (ms <= 0){
+      // already expired; clean up immediately
+      delete it._prevStatus; delete it._prevUpdatedAt; delete it._undoExpiresAt;
+      try{ saveSoon(); }catch(e){}
+      return;
+    }
+    const t = setTimeout(() => {
+      // expire undo window
+      try{
+        const idx = state.items.findIndex(x => x.id === it.id);
+        if (idx >= 0){
+          delete state.items[idx]._prevStatus;
+          delete state.items[idx]._prevUpdatedAt;
+          delete state.items[idx]._undoExpiresAt;
+          saveSoon();
+          render();
+        }
+      }catch(e){/* ignore */}
+      undoTimers.delete(it.id);
+    }, ms);
+    undoTimers.set(it.id, t);
+  }
+
+  function clearUndoTimer(id){
+    const ex = undoTimers.get(id);
+    if (ex){ clearTimeout(ex); undoTimers.delete(id); }
+  }
 
   function saveSoon(){
     saveStateEl.textContent = "Saving…";
@@ -765,17 +808,38 @@ function applyFilters(items){
     const items = filtered.sort((a,b) => Number(b.createdAt || b.updatedAt || 0) - Number(a.createdAt || a.updatedAt || 0));
 
     listEl.innerHTML = items.map(it => {
-      const svcChips = (it.services||[]).map(s => `<span class="chip">${esc(s)}</span>`).join("");
+      const svcChips = (it.services||[]).map(s => {
+        const q = encodeURIComponent((it.title || '') + ' ' + (it.year || '') + ' watch ' + s);
+        const url = `https://www.google.com/search?q=${q}`;
+        return `<a class="chip-link" href="${url}" target="_blank" rel="noopener noreferrer"><span class="chip">${esc(s)}</span></a>`;
+      }).join("");
       const posterImg = it.poster_path 
         ? `<img src="https://image.tmdb.org/t/p/w200${it.poster_path}" style="width:90px; border-radius:10px; float:left; margin-right:15px; box-shadow: var(--shadow);">` 
         : `<div style="width:90px; height:135px; background:var(--chip); float:left; margin-right:15px; border-radius:10px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:11px; color:var(--muted)">No Image</div>`;
 
-      const actionButtons = (String(it.status || '') !== 'watched' && String(it.status || '') !== 'skipped')
-        ? `<div class="actions" style="margin-top:12px">
+      let actionButtons = '';
+      // If we have a recorded previous status, offer an Undo button
+      if (it._prevStatus !== undefined && it._prevStatus !== null){
+        const rem = Math.max(0, Math.ceil(((Number(it._undoExpiresAt) || 0) - Date.now())/1000));
+        actionButtons = `<div class="actions" style="margin-top:12px">
+             <button class="btn" data-undo="${it.id}">Undo${rem ? ' ('+rem+'s)' : ''}</button>
+           </div>`;
+      } else if (String(it.status || '') !== 'watched' && String(it.status || '') !== 'skipped'){
+        actionButtons = `<div class="actions" style="margin-top:12px">
              <button class="btn good" data-set="${it.id}" data-to="watched">Watched</button>
              <button class="btn bad" data-set="${it.id}" data-to="skipped">Skip</button>
-           </div>`
-        : ``;
+           </div>`;
+      }
+
+      // Compute display label + status chip classes
+      const statusLabel = (it.status === 'to_watch') ? 'To Watch' : (it.status ? (String(it.status).charAt(0).toUpperCase() + String(it.status).slice(1)) : 'To Watch');
+      const statusChipClasses = (() => {
+        let c = 'chip';
+        if (it.status === 'watched') c += ' watched';
+        else if (it.status === 'skipped') c += ' skipped';
+        else c += ' to_watch';
+        return c;
+      })();
 
       return `
         <div class="card item" style="display:block; overflow:hidden; padding:15px;">
@@ -786,7 +850,7 @@ function applyFilters(items){
               <button class="btn" data-del="${it.id}">×</button>
             </div>
             <div class="meta" style="margin:6px 0">
-              <span class="chip">${esc(it.status)}</span>
+              <span class="${statusChipClasses}">${esc(statusLabel)}</span>
               <span class="chip vibe">${esc(it.vibe)}</span>
             </div>
             <p style="font-size:13px; color:var(--muted); line-height:1.4; margin:8px 0">${esc(it.description || "No description available.")}</p>
@@ -798,13 +862,34 @@ function applyFilters(items){
       `;
     }).join("");
 
-    // Wire up the buttons
+    // Wire up the status-change buttons (Watched / Skip)
     listEl.querySelectorAll("[data-set]").forEach(b => b.addEventListener("click", () => {
       const idv = b.getAttribute("data-set");
       const it = state.items.find(x=>x.id===idv);
-      if(it){
-        it.status = b.getAttribute("data-to");
-        it.updatedAt = Date.now();
+        if(it){
+          // record previous status so we can undo
+          try{ it._prevStatus = it.status === undefined || it.status === null ? 'to_watch' : it.status; }catch(e){ it._prevStatus = 'to_watch'; }
+          try{ it._prevUpdatedAt = it.updatedAt || Date.now(); }catch(e){ it._prevUpdatedAt = Date.now(); }
+          it.status = b.getAttribute("data-to");
+          it.updatedAt = Date.now();
+          // Set undo expiry and schedule cleanup
+          it._undoExpiresAt = Date.now() + UNDO_DURATION_MS;
+          saveSoon(); render();
+          try{ scheduleUndoForItem(it); }catch(e){/* ignore */}
+        }
+    }));
+    // Wire up Undo buttons
+    listEl.querySelectorAll("[data-undo]").forEach(b => b.addEventListener("click", () => {
+      const idv = b.getAttribute("data-undo");
+      const it = state.items.find(x=>x.id===idv);
+      if (it && (it._prevStatus !== undefined)){
+        // clear any pending auto-expire timer
+        try{ clearUndoTimer(it.id); }catch(e){}
+        it.status = it._prevStatus || 'to_watch';
+        it.updatedAt = it._prevUpdatedAt || Date.now();
+        delete it._prevStatus;
+        delete it._prevUpdatedAt;
+        delete it._undoExpiresAt;
         saveSoon(); render();
       }
     }));
@@ -815,6 +900,14 @@ function applyFilters(items){
         state.items = state.items.filter(x=>x.id!==idv); saveSoon(); render();
       }
     }));
+    // Ensure timers exist for any pending undos (handles reloads and re-renders)
+    try{
+      state.items.forEach(it => {
+        if (it && it._prevStatus !== undefined && it._undoExpiresAt && !undoTimers.has(it.id)){
+          scheduleUndoForItem(it);
+        }
+      });
+    }catch(e){}
   }
 
   // Import/Export
