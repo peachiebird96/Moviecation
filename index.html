@@ -466,86 +466,45 @@
       createdAt: Date.now()
     });
     saveSoon();
-    render();
-    titleInput.value = "";
-  }
+async function addFromCandidate(c){
+    let details, providers;
+    const typePath = c.kind === "movie" ? "movie" : "tv";
+    
+    // This fetches the extra info (description and streaming) from TMDB
+    details = await tmdb(`/${typePath}/${c.id}`, { language:"en-US" });
+    providers = await tmdb(`/${typePath}/${c.id}/watch/providers`);
 
-  function chipClass(service){
-    const s = (service||"").toLowerCase();
-    if (s.includes("rent/buy")) return "buy";
-    if (s.includes("unknown")) return "unk";
-    return "service";
-  }
-  function statusChip(status){
-    if (status==="watched") return `<span class="chip watched">Watched</span>`;
-    if (status==="skipped") return `<span class="chip skipped">Skipped</span>`;
-    return `<span class="chip unk">To watch</span>`;
-  }
+    const region = providers?.results?.[TMDB_REGION];
+    const services = classifyServices(region);
 
-  function getSupabaseClient(){
-    if (!window.supabase) return null;
-    if (!SUPABASE_URL || SUPABASE_URL.includes("PASTE_")) return null;
-    if (!SUPABASE_PUBLISHABLE_KEY || SUPABASE_PUBLISHABLE_KEY.includes("PASTE_")) return null;
-    return window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-  }
+    const title = c.kind === "movie" ? details.title : details.name;
+    const year = c.kind === "movie" ? (details.release_date||"").slice(0,4) : (details.first_air_date||"").slice(0,4);
+    
+    const key = `${c.kind}:${title.toLowerCase()}:${year||""}`;
+    if (state.items.some(it => it.key === key)){
+      alert("Already in the list."); return;
+    }
 
-  async function loadRemoteState(){
-    const sb = getSupabaseClient();
-    if (!sb) return null;
-    const { data, error } = await sb
-      .from("moviecation_lists")
-      .select("state")
-      .eq("id", LIST_ID)
-      .single();
-    if (error) throw error;
-    return data?.state ?? null;
-  }
-
-  async function saveRemoteState(state){
-    const sb = getSupabaseClient();
-    if (!sb) return;
-    const { error } = await sb
-      .from("moviecation_lists")
-      .update({ state })
-      .eq("id", LIST_ID);
-    if (error) throw error;
-  }
-
-
-  function setOptions(){
-    // vibes from current data
-    const vset = new Set(state.items.map(x=>x.vibe));
-    const vibes = [...vset].sort((a,b)=>a.localeCompare(b));
-    vibeFilterEl.innerHTML = `<option value="all">All vibes</option>` + vibes.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
-
-    // services from current data
-    const sset = new Set();
-    for (const it of state.items) for (const s of (it.services||[])) sset.add(s);
-    const services = [...sset].sort((a,b)=>a.localeCompare(b));
-    serviceFilterEl.innerHTML = `<option value="all">All services</option>` + services.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
-  }
-
-  function applyFilters(items){
-    const q = (qEl.value||"").trim().toLowerCase();
-    const sf = statusFilterEl.value;
-    const vf = vibeFilterEl.value;
-    const svc = serviceFilterEl.value;
-
-    return items.filter(it => {
-      if (sf !== "all" && it.status !== sf) return false;
-      if (vf !== "all" && it.vibe !== vf) return false;
-      if (svc !== "all" && !(it.services||[]).includes(svc)) return false;
-      if (q){
-        const hay = `${it.title} ${it.year||""} ${(it.genres||[]).join(" ")} ${(it.services||[]).join(" ")}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
+    state.items.push({
+      id: id(),
+      key,
+      type: c.kind === "tv" ? "show" : "movie",
+      status: "to_watch",
+      title,
+      year,
+      vibe: vibeFromGenres(details.genres || [], title),
+      services,
+      description: details.overview, // Saves movie summary
+      poster_path: details.poster_path, // Saves poster link
+      genres: (details.genres || []).map(g=>g.name),
+      createdAt: Date.now()
     });
+    saveSoon(); render();
+    titleInput.value = "";
   }
 
   function render(){
     setOptions();
-
     const all = state.items.length;
     const toWatch = state.items.filter(x=>x.status==="to_watch").length;
     const watched = state.items.filter(x=>x.status==="watched").length;
@@ -555,54 +514,55 @@
     el("kWatched").textContent = watched;
     el("kSkipped").textContent = skipped;
 
-    // Sort by streaming service first (primary), then title
-    const items = applyFilters(state.items.slice()).sort((a,b) => {
-      const aSvc = (a.services?.[0] || "Unknown/Rent/Buy");
-      const bSvc = (b.services?.[0] || "Unknown/Rent/Buy");
-      const s = aSvc.localeCompare(bSvc);
-      if (s !== 0) return s;
-      return (a.title||"").localeCompare(b.title||"");
-    });
+    const items = applyFilters(state.items.slice()).sort((a,b) => (a.title||"").localeCompare(b.title||""));
 
     listEl.innerHTML = items.map(it => {
       const svcChips = (it.services||[]).map(s => `<span class="chip ${chipClass(s)}">${esc(s)}</span>`).join("");
-      const genreLine = it.genres?.length ? `<div class="muted">Genres: ${esc(it.genres.join(", "))}</div>` : "";
+      
+      // Displays the movie poster or a placeholder if none exists
+      const posterImg = it.poster_path 
+        ? `<img src="https://image.tmdb.org/t/p/w200${it.poster_path}" style="width:90px; border-radius:10px; float:left; margin-right:15px; box-shadow: var(--shadow);">` 
+        : `<div style="width:90px; height:135px; background:var(--chip); float:left; margin-right:15px; border-radius:10px; display:flex; align-items:center; justify-content:center; text-align:center; font-size:11px; color:var(--muted)">No Image</div>`;
+
       return `
-        <div class="card item">
-          <div class="topline">
-            <div>
-              <div class="title">${esc(it.title)} ${it.year ? `<span class="muted">(${esc(it.year)})</span>` : ""}</div>
-              <div class="meta">
-                ${statusChip(it.status)}
-                <span class="chip vibe">${esc(it.vibe)}</span>
-                <span class="chip unk">${it.type === "show" ? "TV Show" : "Movie"}</span>
-              </div>
+        <div class="card item" style="display:block; overflow:hidden; padding:15px;">
+          ${posterImg}
+          <div style="overflow:hidden;">
+            <div class="topline">
+              <div class="title">${esc(it.title)} <span class="muted" style="font-weight:400">(${esc(it.year)})</span></div>
+              <button class="btn" data-del="${it.id}">×</button>
             </div>
-            <button class="btn" data-del="${it.id}">Delete</button>
+            <div class="meta" style="margin:6px 0">
+              ${statusChip(it.status)}
+              <span class="chip vibe">${esc(it.vibe)}</span>
+            </div>
+            <p style="font-size:13px; color:var(--muted); line-height:1.4; margin:8px 0">${esc(it.description || "No description available.")}</p>
+            <div class="meta" style="gap:6px">${svcChips}</div>
+            <div class="actions" style="margin-top:12px">
+              <button class="btn good" data-set="${it.id}" data-to="watched">Watched</button>
+              <button class="btn bad" data-set="${it.id}" data-to="skipped">Skip</button>
+            </div>
           </div>
-
-          <div class="meta" style="gap:6px">${svcChips || `<span class="chip unk">Unknown/Rent/Buy</span>`}</div>
-          ${genreLine}
-
-          <div class="actions">
-            <button class="btn good" data-set="${it.id}" data-to="watched">Mark watched</button>
-            <button class="btn bad" data-set="${it.id}" data-to="skipped">Mark skipped</button>
-            <button class="btn" data-set="${it.id}" data-to="to_watch">Mark to watch</button>
-          </div>
+          <div style="clear:both;"></div>
         </div>
       `;
     }).join("");
-
-    listEl.querySelectorAll("[data-set]").forEach(b => {
-      b.addEventListener("click", () => {
-        const id = b.getAttribute("data-set");
-        const to = b.getAttribute("data-to");
-        const it = state.items.find(x=>x.id===id);
-        if (!it) return;
-        it.status = to;
-        saveSoon(); render();
-      });
-    });
+    
+    // Wire up the buttons (Watched/Skip/Delete)
+    listEl.querySelectorAll("[data-set]").forEach(b => b.addEventListener("click", () => {
+      const it = state.items.find(x=>x.id===b.getAttribute("data-set"));
+      if(it){ it.status = b.getAttribute("data-to"); saveSoon(); render(); }
+    }));
+    listEl.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => {
+      const id = b.getAttribute("data-del");
+      const it = state.items.find(x=>x.id===id);
+      if (it && confirm(`Delete "${it.title}"?`)){
+        state.items = state.items.filter(x=>x.id!==id); saveSoon(); render();
+      }
+    }));
+  }
+  
+  });
     listEl.querySelectorAll("[data-del]").forEach(b => {
       b.addEventListener("click", () => {
         const id = b.getAttribute("data-del");
