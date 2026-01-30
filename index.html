@@ -734,6 +734,7 @@ function applyFilters(items){
 
     // Summary
     resultsSummaryEl.textContent = `${state.items.length} items`;
+    console.debug('setOptions populated', { vibes: [...vibes], services: [...services] });
   }
 
   function render(){
@@ -749,7 +750,8 @@ function applyFilters(items){
 
     // Apply filters, show counts, then sort newest-first
     const filtered = (typeof applyFilters === 'function' ? applyFilters(state.items.slice()) : state.items.slice());
-    resultsSummaryEl.textContent = `${filtered.length} / ${state.items.length} items`;
+    const activeFiltersText = `Filters — status: ${statusFilterEl.value}, vibe: ${vibeFilterEl.value}, service: ${serviceFilterEl.value}, q: "${qEl.value || ''}"`;
+    resultsSummaryEl.textContent = `${filtered.length} / ${state.items.length} items — ${activeFiltersText}`;
     console.debug('Filters:', { q: qEl.value, status: statusFilterEl.value, vibe: vibeFilterEl.value, service: serviceFilterEl.value, filtered: filtered.length });
 
     const items = filtered.sort((a,b) => Number(b.createdAt || b.updatedAt || 0) - Number(a.createdAt || a.updatedAt || 0));
@@ -886,7 +888,7 @@ function applyFilters(items){
   qEl.addEventListener("input", render);
 
 [statusFilterEl, vibeFilterEl, serviceFilterEl].forEach(x => {
-  x.addEventListener("change", render);
+  x.addEventListener("change", (e) => { console.debug('filter changed', { id: e.currentTarget.id, value: e.currentTarget.value }); render(); });
 });
 
   // Clear filters
