@@ -217,17 +217,17 @@
 // Apply current UI filters to a list of items and return the filtered array
 function applyFilters(items){
   const q = (qEl.value || "").trim().toLowerCase();
-  const status = statusFilterEl.value || 'all';
-  const vibe = vibeFilterEl.value || 'all';
-  const service = serviceFilterEl.value || 'all';
+  const status = (statusFilterEl.value || 'all').trim();
+  const vibe = (vibeFilterEl.value || 'all').trim();
+  const service = (serviceFilterEl.value || 'all').trim();
 
   console.debug('applyFilters called', { q, status, vibe, service, itemsCount: items.length });
 
   return items.filter(it => {
-    if (status !== 'all' && it.status !== status) return false;
-    if (vibe !== 'all' && it.vibe !== vibe) return false;
+    if (status !== 'all' && String(it.status || '').trim() !== status) return false;
+    if (vibe !== 'all' && String(it.vibe || '').trim() !== vibe) return false;
     if (service !== 'all'){
-      if (!Array.isArray(it.services) || !it.services.includes(service)) return false;
+      if (!Array.isArray(it.services) || !it.services.some(s => String(s||'').trim() === service)) return false;
     }
     if (q){
       const hay = (`${it.title || ''} ${it.description || ''} ${(it.genres || []).join(' ')}`).toLowerCase();
@@ -726,10 +726,12 @@ function applyFilters(items){
     }
     // Rebuild options, preserving 'all'
     const make = (selEl, set) => {
-      const val = selEl.value || 'all';
+      const prev = selEl.value || 'all';
       selEl.innerHTML = `<option value="all">All ${selEl === vibeFilterEl ? 'vibes' : 'services'}</option>` +
         [...set].sort().map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
-      selEl.value = val;
+      // Restore previous selection only if it exists in the rebuilt options
+      const hasPrev = Array.from(selEl.options).some(o => String(o.value) === String(prev));
+      selEl.value = hasPrev ? prev : 'all';
     };
     make(vibeFilterEl, vibes);
     make(serviceFilterEl, services);
