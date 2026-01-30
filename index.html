@@ -750,8 +750,16 @@ function applyFilters(items){
 
     // Apply filters, show counts, then sort newest-first
     const filtered = (typeof applyFilters === 'function' ? applyFilters(state.items.slice()) : state.items.slice());
-    const activeFiltersText = `status: ${statusFilterEl.value}, vibe: ${vibeFilterEl.value}, service: ${serviceFilterEl.value}, q: "${qEl.value || ''}"`;
-    resultsSummaryEl.textContent = `${filtered.length} / ${state.items.length} — ${activeFiltersText}`;
+    const activeParts = [];
+    const stVal = (statusFilterEl.value || 'all').trim();
+    const vbVal = (vibeFilterEl.value || 'all').trim();
+    const svVal = (serviceFilterEl.value || 'all').trim();
+    const qVal = (qEl.value || '').trim();
+    if (stVal !== 'all') activeParts.push(`status: ${stVal}`);
+    if (vbVal !== 'all') activeParts.push(`vibe: ${vbVal}`);
+    if (svVal !== 'all') activeParts.push(`service: ${svVal}`);
+    if (qVal) activeParts.push(`q: "${qVal}"`);
+    resultsSummaryEl.textContent = activeParts.length ? `${filtered.length} / ${state.items.length} — ${activeParts.join(', ')}` : `${filtered.length} / ${state.items.length}`;
     console.debug('Filters:', { q: qEl.value, status: statusFilterEl.value, vibe: vibeFilterEl.value, service: serviceFilterEl.value, filtered: filtered.length });
 
     const items = filtered.sort((a,b) => Number(b.createdAt || b.updatedAt || 0) - Number(a.createdAt || a.updatedAt || 0));
