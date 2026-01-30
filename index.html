@@ -242,6 +242,8 @@
     saveStateEl.textContent = "Saving…";
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(async () => {
+      // set updated timestamp
+      state.updatedAt = Date.now();
       // Always keep local backup
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(_) {}
 
@@ -312,6 +314,177 @@
     }
     // unique
     return [...new Set(services)];
+  }
+
+  // ------------------
+  // Supabase cross-device sync
+  // ------------------
+  const _supabase = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) : null;
+  // If realtime is available, subscribe to changes on the table so other devices push updates to us
+  if (_supabase && typeof _supabase.channel === 'function'){
+    try{
+      // Merge helper used for realtime incoming payloads — prefers newer per-item data
+      const mergeStatesForRealtime = (localS, remoteS) => {
+        if (!remoteS) return localS;
+        const out = { version: localS.version || remoteS.version || APP_VERSION, items: [] };
+        const map = new Map();
+        const add = (it) => map.set(it.key, Object.assign({}, map.get(it.key) || {}, it));
+
+        for (const r of (remoteS.items || [])) add(r);
+
+        for (const l of (localS.items || [])){
+          const existing = map.get(l.key) || null;
+          if (!existing){ add(l); continue; }
+          const rUpdated = Number(existing.updatedAt || 0);
+          const lUpdated = Number(l.updatedAt || 0);
+          const newer = lUpdated >= rUpdated ? l : existing;
+          const older = lUpdated >= rUpdated ? existing : l;
+          const merged = Object.assign({}, older, newer);
+          if ((!newer.description || String(newer.description).trim() === '') && older && older.description) merged.description = older.description;
+          if ((!newer.poster_path || String(newer.poster_path).trim() === '') && older && older.poster_path) merged.poster_path = older.poster_path;
+          merged.createdAt = older.createdAt || newer.createdAt || Date.now();
+          merged.updatedAt = Math.max(rUpdated, lUpdated, Date.now());
+          map.set(merged.key, merged);
+        }
+
+        out.items = Array.from(map.values());
+        out.updatedAt = Math.max(Number(localS.updatedAt||0), Number(remoteS.updatedAt||0), Date.now());
+        return out;
+      };
+
+      const movieChannel = _supabase.channel('public:movie_lists')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'movie_lists' }, (payload) => {
+          try{
+            const remote = payload?.new?.data;
+            if (!remote) return;
+            const merged = mergeStatesForRealtime(state, remote);
+            const rU = merged.updatedAt || Math.max(0, ...(merged.items||[]).map(i=>i.updatedAt||0));
+            const lU = state.updatedAt || Math.max(0, ...(state.items||[]).map(i=>i.updatedAt||0));
+            if (rU > lU){
+              state = merged;
+              try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(_){ }
+              render();
+            }
+          }catch(e){ console.warn('realtime payload handling failed', e); }
+        })
+        .subscribe();
+
+      // expose channel for potential teardown
+      window._movieChannel = movieChannel;
+    }catch(e){ console.warn('realtime subscribe failed', e); }
+  }
+
+  async function saveRemoteState(st){
+    if (!_supabase) return;
+    try{
+      // Load remote state and merge to avoid clobbering metadata like description/poster_path
+      let remote = null;
+      try{ remote = await loadRemoteState(); }catch(_){}
+
+      const mergeStates = (localS, remoteS) => {
+        if (!remoteS) return localS;
+        const out = { version: localS.version || remoteS.version || APP_VERSION, items: [] };
+        const map = new Map();
+        const add = (it) => map.set(it.key, Object.assign({}, map.get(it.key) || {}, it));
+
+        // index remote items first
+        for (const r of (remoteS.items || [])) add(r);
+
+        // merge local items, preferring newer per-item fields but preserving older description/poster when newer lacks them
+        for (const l of (localS.items || [])){
+          const existing = map.get(l.key) || null;
+          if (!existing){
+            add(l);
+            continue;
+          }
+          const rUpdated = Number(existing.updatedAt || 0);
+          const lUpdated = Number(l.updatedAt || 0);
+          const newer = lUpdated >= rUpdated ? l : existing;
+          const older = lUpdated >= rUpdated ? existing : l;
+          const merged = Object.assign({}, older, newer);
+          // if newer lacks description/poster, keep older's values
+          if ((!newer.description || String(newer.description).trim() === '') && older && older.description) merged.description = older.description;
+          if ((!newer.poster_path || String(newer.poster_path).trim() === '') && older && older.poster_path) merged.poster_path = older.poster_path;
+          merged.createdAt = older.createdAt || newer.createdAt || Date.now();
+          merged.updatedAt = Math.max(rUpdated, lUpdated, Date.now());
+          map.set(merged.key, merged);
+        }
+
+        out.items = Array.from(map.values());
+        out.updatedAt = Math.max(Number(localS.updatedAt||0), Number(remoteS.updatedAt||0), Date.now());
+        return out;
+      };
+
+      const payloadState = mergeStates(st, remote);
+
+      // Prefer RPC, but send merged payload so we don't wipe metadata
+      if (typeof _supabase.rpc === 'function'){
+        const { error } = await _supabase.rpc('upsert_movie_list', { p_id: LIST_ID, p_data: payloadState });
+        if (error) throw error;
+        return;
+      }
+
+      const payload = { id: LIST_ID, data: payloadState, updated_at: new Date().toISOString() };
+      const { error } = await _supabase.from('movie_lists').upsert(payload, { returning: 'minimal' });
+      if (error) throw error;
+    }catch(e){
+      console.warn('saveRemoteState failed', e);
+      throw e;
+    }
+  }
+
+  async function loadRemoteState(){
+    if (!_supabase) return null;
+    try{
+      const { data, error } = await _supabase.from('movie_lists').select('data').eq('id', LIST_ID).single();
+      if (error){
+        console.warn('loadRemoteState error', error);
+        return null;
+      }
+      return data?.data || null;
+    }catch(e){
+      console.warn('loadRemoteState failed', e);
+      return null;
+    }
+  }
+
+  async function initRemoteSync(){
+    if (!_supabase) return;
+    try{
+      const remote = await loadRemoteState();
+      if (!remote){
+        // push local state to remote if nothing exists
+        await saveRemoteState(state);
+        return;
+      }
+
+      const localUpdated = state.updatedAt || Math.max(0, ...(state.items||[]).map(i=>i.createdAt||0));
+      const remoteUpdated = remote.updatedAt || Math.max(0, ...(remote.items||[]).map(i=>i.createdAt||0));
+
+      if (remoteUpdated > localUpdated){
+        state = remote;
+        try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+        render();
+      } else if (localUpdated > remoteUpdated){
+        await saveRemoteState(state);
+      }
+
+      // Poll for remote changes (simple fallback when realtime isn't configured)
+      setInterval(async () => {
+        try{
+          const r = await loadRemoteState();
+          if (!r) return;
+          const rU = r.updatedAt || Math.max(0, ...(r.items||[]).map(i=>i.createdAt||0));
+          const lU = state.updatedAt || Math.max(0, ...(state.items||[]).map(i=>i.createdAt||0));
+          if (rU > lU){
+            state = r;
+            try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+            render();
+          }
+        }catch(e){/* ignore polling errors */}
+      }, 15000);
+
+    }catch(e){ console.warn('initRemoteSync failed', e); }
   }
 
   function vibeFromGenres(genres, title){
@@ -496,7 +669,8 @@
       description: details.overview,
       poster_path: details.poster_path,
       genres: (details.genres || []).map(g=>g.name),
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      updatedAt: Date.now()
     });
     saveSoon(); render();
     titleInput.value = "";
@@ -572,7 +746,11 @@
     listEl.querySelectorAll("[data-set]").forEach(b => b.addEventListener("click", () => {
       const idv = b.getAttribute("data-set");
       const it = state.items.find(x=>x.id===idv);
-      if(it){ it.status = b.getAttribute("data-to"); saveSoon(); render(); }
+      if(it){
+        it.status = b.getAttribute("data-to");
+        it.updatedAt = Date.now();
+        saveSoon(); render();
+      }
     }));
     listEl.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => {
       const idv = b.getAttribute("data-del");
@@ -604,7 +782,7 @@
         try{
           const incoming = JSON.parse(ioText.value);
           if (!incoming || !Array.isArray(incoming.items)) throw new Error("Invalid JSON");
-          // minimal normalize
+          // minimal normalize, include per-item updatedAt
           state = { version: APP_VERSION, items: incoming.items.map(x => ({
             id: x.id || id(),
             key: x.key || `${x.type}:${(x.title||"").toLowerCase()}:${x.year||""}`,
@@ -615,7 +793,8 @@
             vibe: x.vibe || "Cozy / Comfort",
             services: Array.isArray(x.services) ? x.services : ["Unknown/Rent/Buy"],
             genres: Array.isArray(x.genres) ? x.genres : [],
-            createdAt: x.createdAt || Date.now()
+            createdAt: x.createdAt || Date.now(),
+            updatedAt: x.updatedAt || x.createdAt || Date.now()
           }))};
           localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
           showIO(false); render();
@@ -682,6 +861,8 @@
 
 
   render();
+  // Start remote sync in background (if Supabase is configured)
+  try{ initRemoteSync(); }catch(e){}
 })();
 </script>
 </body>
