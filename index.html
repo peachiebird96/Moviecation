@@ -422,7 +422,11 @@
         return out;
       };
 
-      const payloadState = mergeStates(st, remote);
+      // If local state is newer (e.g. a recent local delete), prefer it wholesale
+      // to avoid resurrecting removed items from an older remote copy.
+      const payloadState = (
+        !remote || Number(st.updatedAt || 0) >= Number(remote.updatedAt || 0)
+      ) ? st : mergeStates(st, remote);
 
       // Prefer RPC, but send merged payload so we don't wipe metadata
       if (typeof _supabase.rpc === 'function'){
