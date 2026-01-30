@@ -439,12 +439,14 @@ function applyFilters(items){
       if (year){ raw = raw.replace(new RegExp('\\b' + String(year) + '\\b'), ''); }
       raw = raw.replace(/\s+/g, ' ').trim();
     }catch(e){ /* fallback to unmodified raw on any error */ }
-    // If we have a TMDB id for this item, prefer linking to that TMDB detail page (specific title)
+    // If we have a provider-specific template, prefer it (this attempts to open native apps when possible)
+    if (PROVIDER_URL_TEMPLATES[key]) return PROVIDER_URL_TEMPLATES[key](raw);
+
+    // If no provider template, but we have a TMDB id, link to the TMDB detail page
     if (tmdbId && tmdbType){
       return `https://www.themoviedb.org/${tmdbType}/${encodeURIComponent(String(tmdbId))}`;
     }
 
-    if (PROVIDER_URL_TEMPLATES[key]) return PROVIDER_URL_TEMPLATES[key](raw);
     // fallback: JustWatch search
     return `https://www.justwatch.com/us/search?q=${encodeURIComponent(raw)}`;
   }
@@ -872,7 +874,10 @@ function applyFilters(items){
     listEl.innerHTML = items.map(it => {
         const svcChips = (it.services||[]).map(s => {
           const url = getProviderSearchUrl(s, it.title, it.year, it.type, it.tmdbId);
-          return `<a class="chip-link" href="${url}" target="_blank" rel="noopener noreferrer"><span class="chip service">${esc(s)}</span></a>`;
+          // For non-http(s) schemes (intent:, vnd:, etc.) prefer opening in same context
+          const isHttp = String(url).toLowerCase().startsWith('http');
+          const attrs = isHttp ? ' target="_blank" rel="noopener noreferrer"' : '';
+          return `<a class="chip-link" href="${url}"${attrs}><span class="chip service">${esc(s)}</span></a>`;
         }).join("");
         const posterImg = it.poster_path 
           ? `<img src="https://image.tmdb.org/t/p/w200${it.poster_path}" style="width:90px; height:135px; border-radius:10px; box-shadow: var(--shadow); object-fit:cover; display:block">` 
