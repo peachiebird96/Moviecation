@@ -391,6 +391,41 @@ function applyFilters(items){
     return [...new Set(services)];
   }
 
+  // Build provider-specific search/listing URLs for a title (best-effort)
+  const PROVIDER_URL_TEMPLATES = {
+    'netflix': (t) => `https://www.netflix.com/search?q=${t}`,
+    'hulu': (t) => `https://www.hulu.com/search?query=${t}`,
+    'disney+': (t) => `https://www.disneyplus.com/search/${t}`,
+    'disney plus': (t) => `https://www.disneyplus.com/search/${t}`,
+    'max': (t) => `https://www.hbomax.com/search?q=${t}`,
+    'hbo max': (t) => `https://www.hbomax.com/search?q=${t}`,
+    'prime video': (t) => `https://www.amazon.com/s?k=${t}&i=instant-video`,
+    'amazon prime video': (t) => `https://www.amazon.com/s?k=${t}&i=instant-video`,
+    'peacock': (t) => `https://www.peacocktv.com/search?q=${t}`,
+    'paramount+': (t) => `https://www.paramountplus.com/search/?q=${t}`,
+    'paramount plus': (t) => `https://www.paramountplus.com/search/?q=${t}`,
+    'apple tv+': (t) => `https://tv.apple.com/us/search?term=${t}`,
+    'apple tv': (t) => `https://tv.apple.com/us/search?term=${t}`,
+    'youtube': (t) => `https://www.youtube.com/results?search_query=${t}`,
+    'google play movies': (t) => `https://play.google.com/store/search?q=${t}&c=movies`,
+    'fandango at home': (t) => `https://www.fandango.com/search?q=${t}`,
+    'tubi': (t) => `https://tubitv.com/search?query=${t}`,
+    'tubi tv': (t) => `https://tubitv.com/search?query=${t}`,
+    'pluto tv': (t) => `https://pluto.tv/search?q=${t}`,
+    'roku channel': (t) => `https://therokuchannel.roku.com/search?search=${t}`,
+    'the roku channel': (t) => `https://therokuchannel.roku.com/search?search=${t}`,
+    'fandango': (t) => `https://www.fandango.com/search?q=${t}`
+  };
+
+  function getProviderSearchUrl(rawServiceName, title, year){
+    const clean = String(rawServiceName || '').replace(/\s*\(.*\)$/, '').trim(); // drop (Free)/(Ads)
+    const key = normalizeServiceName(clean).toLowerCase();
+    const q = encodeURIComponent((title || '') + (year ? ' ' + year : ''));
+    if (PROVIDER_URL_TEMPLATES[key]) return PROVIDER_URL_TEMPLATES[key](q);
+    // fallback: JustWatch or Google search
+    return `https://www.justwatch.com/us/search?q=${q}`;
+  }
+
   // ------------------
   // Supabase cross-device sync
   // ------------------
@@ -809,8 +844,7 @@ function applyFilters(items){
 
     listEl.innerHTML = items.map(it => {
       const svcChips = (it.services||[]).map(s => {
-        const q = encodeURIComponent((it.title || '') + ' ' + (it.year || '') + ' watch ' + s);
-        const url = `https://www.google.com/search?q=${q}`;
+        const url = getProviderSearchUrl(s, it.title, it.year);
         return `<a class="chip-link" href="${url}" target="_blank" rel="noopener noreferrer"><span class="chip service">${esc(s)}</span></a>`;
       }).join("");
       const posterImg = it.poster_path 
