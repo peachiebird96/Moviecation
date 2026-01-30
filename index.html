@@ -393,8 +393,8 @@ function applyFilters(items){
 
   // Build provider-specific search/listing URLs for a title (best-effort)
   const PROVIDER_URL_TEMPLATES = {
-    'netflix': (t) => `https://www.netflix.com/search?q=${t}`,
-    'hulu': (t) => `https://www.hulu.com/search?query=${t}`,
+    'netflix': (t) => { const q = encodeURIComponent(t); return `https://www.netflix.com/search?q=${q}`; },
+    'hulu': (t) => { const q = encodeURIComponent(t); return `https://www.hulu.com/search?query=${q}`; },
     // Prefer app/opening behavior: Android intent tries to open the Disney+ app;
     // on other platforms use the Disney+ universal link (may open app if configured),
     // fallback to JustWatch search when provider-specific link isn't available.
@@ -414,33 +414,33 @@ function applyFilters(items){
         return `https://www.disneyplus.com/search?query=${q}`;
       }catch(e){ return `https://www.justwatch.com/us/search?q=${encodeURIComponent(t)}`; }
     },
-    'max': (t) => `https://www.hbomax.com/search?q=${t}`,
-    'hbo max': (t) => `https://www.hbomax.com/search?q=${t}`,
-    'prime video': (t) => `https://www.amazon.com/s?k=${t}&i=instant-video`,
-    'amazon prime video': (t) => `https://www.amazon.com/s?k=${t}&i=instant-video`,
-    'peacock': (t) => `https://www.peacocktv.com/search?q=${t}`,
-    'paramount+': (t) => `https://www.paramountplus.com/search/?q=${t}`,
-    'paramount plus': (t) => `https://www.paramountplus.com/search/?q=${t}`,
-    'apple tv+': (t) => `https://tv.apple.com/us/search?term=${t}`,
-    'apple tv': (t) => `https://tv.apple.com/us/search?term=${t}`,
-    'youtube': (t) => `https://www.youtube.com/results?search_query=${t}`,
-    'google play movies': (t) => `https://play.google.com/store/search?q=${t}&c=movies`,
-    'fandango at home': (t) => `https://www.fandango.com/search?q=${t}`,
-    'tubi': (t) => `https://tubitv.com/search?query=${t}`,
-    'tubi tv': (t) => `https://tubitv.com/search?query=${t}`,
-    'pluto tv': (t) => `https://pluto.tv/search?q=${t}`,
-    'roku channel': (t) => `https://therokuchannel.roku.com/search?search=${t}`,
-    'the roku channel': (t) => `https://therokuchannel.roku.com/search?search=${t}`,
-    'fandango': (t) => `https://www.fandango.com/search?q=${t}`
+    'max': (t) => { const q = encodeURIComponent(t); return `https://www.hbomax.com/search?q=${q}`; },
+    'hbo max': (t) => { const q = encodeURIComponent(t); return `https://www.hbomax.com/search?q=${q}`; },
+    'prime video': (t) => { const q = encodeURIComponent(t); return `https://www.amazon.com/s?k=${q}&i=instant-video`; },
+    'amazon prime video': (t) => { const q = encodeURIComponent(t); return `https://www.amazon.com/s?k=${q}&i=instant-video`; },
+    'peacock': (t) => { const q = encodeURIComponent(t); return `https://www.peacocktv.com/search?q=${q}`; },
+    'paramount+': (t) => { const q = encodeURIComponent(t); return `https://www.paramountplus.com/search/?q=${q}`; },
+    'paramount plus': (t) => { const q = encodeURIComponent(t); return `https://www.paramountplus.com/search/?q=${q}`; },
+    'apple tv+': (t) => { const q = encodeURIComponent(t); return `https://tv.apple.com/us/search?term=${q}`; },
+    'apple tv': (t) => { const q = encodeURIComponent(t); return `https://tv.apple.com/us/search?term=${q}`; },
+    'youtube': (t) => { const q = encodeURIComponent(t); return `https://www.youtube.com/results?search_query=${q}`; },
+    'google play movies': (t) => { const q = encodeURIComponent(t); return `https://play.google.com/store/search?q=${q}&c=movies`; },
+    'fandango at home': (t) => { const q = encodeURIComponent(t); return `https://www.fandango.com/search?q=${q}`; },
+    'tubi': (t) => { const q = encodeURIComponent(t); return `https://tubitv.com/search?query=${q}`; },
+    'tubi tv': (t) => { const q = encodeURIComponent(t); return `https://tubitv.com/search?query=${q}`; },
+    'pluto tv': (t) => { const q = encodeURIComponent(t); return `https://pluto.tv/search?q=${q}`; },
+    'roku channel': (t) => { const q = encodeURIComponent(t); return `https://therokuchannel.roku.com/search?search=${q}`; },
+    'the roku channel': (t) => { const q = encodeURIComponent(t); return `https://therokuchannel.roku.com/search?search=${q}`; },
+    'fandango': (t) => { const q = encodeURIComponent(t); return `https://www.fandango.com/search?q=${q}`; }
   };
 
   function getProviderSearchUrl(rawServiceName, title, year){
     const clean = String(rawServiceName || '').replace(/\s*\(.*\)$/, '').trim(); // drop (Free)/(Ads)
     const key = normalizeServiceName(clean).toLowerCase();
-    const q = encodeURIComponent((title || '') + (year ? ' ' + year : ''));
-    if (PROVIDER_URL_TEMPLATES[key]) return PROVIDER_URL_TEMPLATES[key](q);
-    // fallback: JustWatch or Google search
-    return `https://www.justwatch.com/us/search?q=${q}`;
+    const raw = (title || '') + (year ? ' ' + year : '');
+    if (PROVIDER_URL_TEMPLATES[key]) return PROVIDER_URL_TEMPLATES[key](raw);
+    // fallback: JustWatch search
+    return `https://www.justwatch.com/us/search?q=${encodeURIComponent(raw)}`;
   }
 
   // ------------------
