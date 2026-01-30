@@ -1080,13 +1080,36 @@ function applyFilters(items){
       // If this is Disney+ on desktop, the provider search URL sometimes 404s.
       // Prefer opening a JustWatch provider-specific search on desktop to avoid errors.
       if (pkey === 'disney+' || pkey === 'disney plus'){
+        e.preventDefault();
+        // Desktop: open JustWatch to avoid provider 404s
         if (isDesktop){
-          e.preventDefault();
           const jw = `https://www.justwatch.com/us/search?q=${encodeURIComponent(title)}`;
           window.open(jw, '_blank', 'noopener');
           return;
         }
-        // On mobile, let the anchor proceed (it may open app or universal link).
+
+        // Mobile (iOS/Android): attempt app-specific scheme first, then universal link, then JustWatch
+        const enc = encodeURIComponent(title);
+        // some Android browsers handle intent: links well (we already used intent: earlier),
+        // on iOS try the app URL scheme (best-effort). If it fails, fall back to Disney+ web search,
+        // then JustWatch as a last resort.
+        if (isIOS){
+          try{
+            // Try Disney+ custom scheme search (user gesture required; may or may not be supported)
+            window.location = `disneyplus://search?query=${enc}`;
+          }catch(_){ }
+          // After a short delay, open the Disney+ web search (this may trigger Universal Link -> app)
+          setTimeout(() => {
+            const u = `https://www.disneyplus.com/search?query=${enc}`;
+            // open in same tab so Universal Link can be handled by the OS
+            window.location = u;
+            // final fallback after another delay -> JustWatch in a new tab
+            setTimeout(() => window.open(`https://www.justwatch.com/us/search?q=${enc}`, '_blank', 'noopener'), 900);
+          }, 600);
+          return;
+        }
+
+        // For Android, allow the anchor to proceed (intent: link will be used by template)
         return;
       }
 
