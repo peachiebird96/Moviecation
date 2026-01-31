@@ -880,11 +880,8 @@ function applyFilters(items){
     listEl.innerHTML = items.map(it => {
         const svcChips = (it.services||[]).map(s => {
           const pkey = normalizeServiceName(s).toLowerCase();
-          const url = getProviderSearchUrl(s, it.title, it.year, it.type, it.tmdbId);
-          // For non-http(s) schemes (intent:, vnd:, etc.) prefer opening in same context
-          const isHttp = String(url).toLowerCase().startsWith('http');
-          const attrs = isHttp ? ' target="_blank" rel="noopener noreferrer"' : '';
-          return `<a class="chip-link" href="${url}" data-pkey="${esc(pkey)}" data-title="${esc(it.title)}" data-tmdbid="${esc(it.tmdbId||'')}" data-tmdbtype="${esc(it.tmdbType||'')}"${attrs}><span class="chip service">${esc(s)}</span></a>`;
+          // Chips are non-clickable spans now; links removed by user request.
+          return `<span class="chip service" data-pkey="${esc(pkey)}" data-title="${esc(it.title)}" data-tmdbid="${esc(it.tmdbId||'')}" data-tmdbtype="${esc(it.tmdbType||'')}">${esc(s)}</span>`;
         }).join("");
         const posterImg = it.poster_path 
           ? `<img src="https://image.tmdb.org/t/p/w200${it.poster_path}" style="width:90px; height:135px; border-radius:10px; box-shadow: var(--shadow); object-fit:cover; display:block">` 
