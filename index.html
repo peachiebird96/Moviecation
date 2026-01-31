@@ -1070,40 +1070,7 @@ function applyFilters(items){
   x.addEventListener("change", (e) => { console.debug('filter changed', { id: e.currentTarget.id, value: e.currentTarget.value }); render(); });
 });
 
-  // Global click handler for provider chips: attempt better app-open behavior
-  document.addEventListener('click', (e) => {
-    try{
-      const a = e.target.closest && e.target.closest('a.chip-link');
-      if (!a) return;
-
-      const pkey = (a.getAttribute('data-pkey') || '').toLowerCase();
-      const title = a.getAttribute('data-title') || '';
-      const href = a.getAttribute('href') || '';
-      const ua = navigator.userAgent || '';
-      const isAndroid = /Android/i.test(ua);
-      const isIOS = /iPhone|iPad|iPod/i.test(ua);
-
-      // For any provider chip on mobile, run the app-open flow; on desktop open provider or JustWatch
-      if (isAndroid || isIOS){
-        e.preventDefault();
-        // use the sequential open flow
-        openProviderFlow(a);
-        return;
-      }
-
-      // Desktop: for Disney+ prefer JustWatch (avoids 404). Other providers use provider templates.
-      if (pkey === 'disney+' || pkey === 'disney plus'){
-        e.preventDefault();
-        window.open(`https://www.justwatch.com/us/search?q=${encodeURIComponent(title)}`, '_blank', 'noopener');
-        return;
-      }
-      // else let the anchor behave normally (some anchors are target=_blank already)
-
-      // For other providers, if the href uses a non-http scheme (intent:, vnd:, etc.)
-      // allow navigation in the same window (do nothing) so the OS can handle it.
-      // If it's an http(s) link we allow default behavior (some are target=_blank).
-    }catch(e){ /* swallow handler errors */ }
-  });
+  // Provider chips are plain anchors; no global click interception.
 
   // Clear filters
   if (clearFiltersBtn){
